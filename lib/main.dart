@@ -109,6 +109,7 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             TableCalendar(
+                locale: "ko_KR",
                 focusedDay: today,
                 firstDay: DateTime(2020, 1, 1),
                 lastDay: DateTime.utc(2030, 12, 30)),

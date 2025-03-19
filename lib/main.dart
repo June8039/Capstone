@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -55,6 +57,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  DateTime today = DateTime.now();
   int _counter = 0;
 
   void _incrementCounter() {
@@ -105,6 +108,10 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            TableCalendar(
+                focusedDay: today,
+                firstDay: DateTime(2020, 1, 1),
+                lastDay: DateTime.utc(2030, 12, 30)),
             const Text(
               'You have pushed the button this many times:',
             ),

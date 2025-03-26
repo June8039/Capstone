@@ -32,6 +32,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
         onDaySelected: (selectedDay, focusedDay) {
           setState(() {
+            //tapped day = selected day
             _selectedDay = selectedDay;
             _focusedDay = focusedDay ?? _focusedDay;
           });

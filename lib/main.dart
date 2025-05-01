@@ -6,12 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'screens/home_screen.dart';
+import 'screens/exercise_screen.dart';
 import 'screens/calendar_screen.dart';
 
 void main() async {
   // Initialize locale data
   await initializeDateFormatting();
-
   // Run the app
   runApp(const MyApp());
 }
@@ -26,40 +26,47 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const HomeScreen(),
-      routes: {
-        '/calendar': (context) => const CalendarScreen(),
-      },
+      home: const MainScreen(), //main homescreen
     );
   }
 }
 
-class NavigationWrapper extends StatefulWidget {
-  const NavigationWrapper({super.key});
+
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
 
   @override
-  State<NavigationWrapper> createState() => _NavigationWrapperState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _NavigationWrapperState extends State<NavigationWrapper> {
-  int _currentIndex = 0;
+class _MainScreenState extends State<MainScreen> {
+  int _selectedIndex = 0;
+
   final List<Widget> _screens = [
-    const HomeScreen(),
-    const CalendarScreen(),
+    //all pages should be defined here
+    const ExerciseScreen(),
+    const CalendarScreen(), // Create this or any other screen
   ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
-        index: _currentIndex,
+        index: _selectedIndex,
         children: _screens,
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
+        currentIndex: _selectedIndex,
         onTap: (index) {
           setState(() {
-            _currentIndex = index;
+            _selectedIndex = index;
           });
         },
         items: const [

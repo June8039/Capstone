@@ -11,7 +11,7 @@ class ExerciseScreen extends StatelessWidget {
         child: Container(
           width: 300,
           padding: EdgeInsets.all(16),
-          child: const Column(
+          child: Column(
             crossAxisAlignment:CrossAxisAlignment.start,
             children: [
               Text('운동계획', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -22,11 +22,17 @@ class ExerciseScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment:
                   CrossAxisAlignment.start,
-                  children: [
-                    Text('난이도 1'),
-                    Text('난이도 2'),
-                    Text('난이도 3'),
-                  ],
+                    children: [
+                      OutlinedButton( onPressed: () {
+                        // go to the exercise page
+                      }, child: Text("난이도 1"), ),
+                      OutlinedButton( onPressed: () {
+                      // go to the exercise page
+                      }, child: Text("난이도 2"), ),
+                      OutlinedButton( onPressed: () {
+                        // go to the exercise page
+                      }, child: Text("난이도 3"), ),
+                    ],
                 ),
               ),
               SizedBox(height: 16),
@@ -37,9 +43,15 @@ class ExerciseScreen extends StatelessWidget {
                   crossAxisAlignment:
                   CrossAxisAlignment.start,
                   children: [
-                    Text('난이도 1'),
-                    Text('난이도 2'),
-                    Text('난이도 3'),
+                    OutlinedButton( onPressed: () {
+                      // go to the exercise page
+                    }, child: Text("난이도 1"), ),
+                    OutlinedButton( onPressed: () {
+                      // go to the exercise page
+                    }, child: Text("난이도 2"), ),
+                    OutlinedButton( onPressed: () {
+                      // go to the exercise page
+                    }, child: Text("난이도 3"), ),
                   ],
                 ),
               )

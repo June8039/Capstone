@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "112710046445",
+    "firebase_url": "https://capstone-11bce-default-rtdb.firebaseio.com",
+    "project_id": "capstone-11bce",
+    "storage_bucket": "capstone-11bce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:112710046445:android:95fac085ac7bd5c08c32e4",
+        "android_client_info": {
+          "package_name": "com.example.capstone_healthcare_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoIOz6Wde5iRAOlAwYteJsm7FC6sZUUlM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -8,12 +8,20 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'screens/home_screen.dart';
 import 'screens/exercise_screen.dart';
 import 'screens/calendar_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 void main() async {
   // Initialize locale data
   await initializeDateFormatting();
   // Run the app
   runApp(const MyApp());
+
+  // Firebase Core 초기화
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
 }
 
 class MyApp extends StatelessWidget {

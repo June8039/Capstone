@@ -8,23 +8,30 @@ class ExerciseScreen extends StatelessWidget {
   const ExerciseScreen({super.key});
 
   void _startHeelRaiseFlow(BuildContext context) async {
-    // CalibrationScreen에서 측정 완료 후 baselineValues를 반환받음
-    final baselineValues = await Navigator.push<Map<String, dynamic>>(
+    // CalibrationScreen에서 측정 완료 후 baselineValues와 initialLensFacing 반환받음
+    final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (_) => const CalibrationScreen(),
       ),
     );
-    if (baselineValues != null) {
-      // 측정 완료 후 HeelRaiseScreen으로 이동
+
+    if (result != null) {
+      final baselineValues = result['baselineValues'] as Map<String, dynamic>;
+      final initialLensFacing = result['initialLensFacing'] as int;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => HeelRaiseScreen(baselineValues: baselineValues),
+          builder: (_) => HeelRaiseScreen(
+            baselineValues: baselineValues,
+            initialLensFacing: initialLensFacing,
+          ),
         ),
       );
     }
   }
+
 
   void _startSquatFlow(BuildContext context) {
     Navigator.push(

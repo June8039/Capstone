@@ -29,6 +29,7 @@ class CalibrationViewFactory(
             activity, // FlutterActivity
             methodChannel, // MethodChannel
             eventChannel, // EventChannel
+            args as? Map<String, Any>
         )
     }
 }

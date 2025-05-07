@@ -5,7 +5,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'heelraise_screen.dart';
 
 class CalibrationScreen extends StatefulWidget {
-  const CalibrationScreen({super.key});
+  final int initialLensFacing;
+  const CalibrationScreen({super.key, this.initialLensFacing = 0});
+
 
   @override
   State<CalibrationScreen> createState() => _CalibrationScreenState();
@@ -18,14 +20,16 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
   MethodChannel(
       'com.example.capstone_healthcare_app/calibration_method_channel');
 
+  int _currentLensFacing = 0;
   double _progress = 0.0;
   bool _isCompleted = false;
   bool _hasPermission = false;
-  late StreamSubscription? _eventSubscription;
+  StreamSubscription? _eventSubscription;
 
   @override
   void initState() {
     super.initState();
+    _currentLensFacing = widget.initialLensFacing;
     _requestCameraPermission();
   }
 
@@ -59,17 +63,24 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
           if (!mounted) return;
           debugPrint("이벤트 수신: $event");
           if (event is Map) {
+            // 진행률 업데이트 로그 추가
             if (event['type'] == 'progress') {
-              setState(() => _progress = event['value']);
-            } else if (event['type'] == 'completed') {
+              debugPrint("진행률 업데이트 수신: ${event['value']}");
+              setState(() => _progress = (event['value'] as num).toDouble());
+            }
+            // 완료 이벤트 로그 추가
+            else if (event['type'] == 'completed') {
+              debugPrint("기준 측정 완료 데이터 수신: ${event['baselineValues']}");
               setState(() => _isCompleted = true);
               final baselineValues =
               Map<String, dynamic>.from(event['baselineValues']);
               Future.microtask(() {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        HeelRaiseScreen(baselineValues: baselineValues),
+                    builder: (_) => HeelRaiseScreen(
+                      baselineValues: baselineValues,
+                      initialLensFacing: _currentLensFacing, // 현재 카메라 방향 전달
+                    ),
                   ),
                 );
               });
@@ -104,11 +115,14 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
             height: double.infinity,
             child: AndroidView(
               viewType: 'NativeCalibrationView',
-              creationParams: const {},
+              creationParams: {
+                'initialLensFacing': widget.initialLensFacing,
+              },
               creationParamsCodec: StandardMessageCodec(),
               onPlatformViewCreated: (viewId) {
                 _setupEventListeners();
                 Future.delayed(const Duration(milliseconds: 500), () {
+                  debugPrint("startCalibration 메서드 호출 시도");
                   _methodChannel.invokeMethod('startCalibration');
                 });
               },
@@ -140,7 +154,13 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
 
   void _switchCamera() async {
     try {
-      await _methodChannel.invokeMethod('switchCamera');
+      // 네이티브에서 새로운 카메라 방향을 반환받아 상태 업데이트
+      final newLensFacing = await _methodChannel.invokeMethod<int>('switchCamera');
+      if (newLensFacing != null) {
+        setState(() {
+          _currentLensFacing = newLensFacing;
+        });
+      }
     } catch (e) {
       debugPrint("카메라 전환 실패: $e");
     }

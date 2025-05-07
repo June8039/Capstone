@@ -4,7 +4,12 @@ import 'package:flutter/services.dart';
 
 class HeelRaiseScreen extends StatefulWidget {
   final Map<String, dynamic> baselineValues;
-  const HeelRaiseScreen({super.key, required this.baselineValues});
+  final int initialLensFacing;
+  const HeelRaiseScreen({
+    super.key,
+    required this.baselineValues,
+    required this.initialLensFacing,
+  });
 
   @override
   State<HeelRaiseScreen> createState() => _HeelRaiseScreenState();
@@ -18,31 +23,53 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
 
   int _count = 0;
   bool _isCompleted = false;
-  late StreamSubscription _eventSubscription;
+  StreamSubscription? _eventSubscription;
 
   @override
-  void initState() {
-    super.initState();
+  void dispose() {
+    _methodChannel.invokeMethod('cancel');
+    _eventSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _flipCamera() {
+    _methodChannel.invokeMethod('flipCamera');
+  }
+
+  void _startExercise() {
+    if (widget.baselineValues == null) {
+      print('baselineValues가 null입니다!');
+      return;
+    }
+
+    // 키 존재 여부 검증
+    if (!widget.baselineValues.containsKey('left_heel_y') ||
+        !widget.baselineValues.containsKey('right_heel_y')) {
+      print('필수 키 누락: left_heel_y 또는 right_heel_y');
+      return;
+    }
+
+    // 타입 검증 및 변환
+    final convertedValues = {
+      'left_heel_y': (widget.baselineValues['left_heel_y'] as num).toDouble(),
+      'right_heel_y': (widget.baselineValues['right_heel_y'] as num).toDouble(),
+    };
+    _methodChannel.invokeMethod('resetCount');
+    _methodChannel.invokeMethod('initialize', convertedValues);
+  }
+
+
+  void _subscribeEventChannel() {
     _eventSubscription = _eventChannel.receiveBroadcastStream().listen((event) {
       if (event is Map) {
         if (event['type'] == 'pose_update') {
           setState(() => _count = event['count'] ?? _count);
-        } else if (event['type'] == 'completed') {
-          setState(() => _isCompleted = true);
+          if (event['status'] == 'completed') {
+            setState(() => _isCompleted = true);
+          }
         }
       }
     });
-    _startExercise();
-  }
-
-  void _startExercise() {
-    _methodChannel.invokeMethod('initialize', widget.baselineValues);
-  }
-
-  @override
-  void dispose() {
-    _eventSubscription.cancel();
-    super.dispose();
   }
 
   @override
@@ -91,10 +118,18 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                       Expanded(
                         child: Stack(
                           children: [
-                            const AndroidView(
+                            AndroidView(
                               viewType: 'NativeHeelRaiseView',
-                              creationParams: {},
+                              creationParams: {
+                                'baselineValues': widget.baselineValues,
+                                'initialLensFacing': widget.initialLensFacing,
+                              },
                               creationParamsCodec: StandardMessageCodec(),
+                              onPlatformViewCreated: (viewId) {
+                                // 네이티브 뷰 attach 이후에만 이벤트 구독 및 초기화
+                                _subscribeEventChannel();
+                                _startExercise();
+                              },
                             ),
                           ],
                         ),
@@ -110,7 +145,7 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                         aspectRatio: 4 / 3,
                         child: Container(
                           color: Colors.black,
-                          child: Center(
+                          child: const Center(
                             child: Text(
                               '발 뒤꿈치 들기 예시 영상',
                               style: TextStyle(color: Colors.white54),
@@ -181,9 +216,5 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
         ),
       ),
     );
-  }
-
-  void _flipCamera() {
-    _methodChannel.invokeMethod('flipCamera');
   }
 }

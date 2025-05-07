@@ -13,6 +13,12 @@ class HeelRaiseViewFactory(
 ) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
 
     override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
-        return NativeHeelRaiseView(activity, messenger, viewId)
+        // creationParams를 NativeHeelRaiseView에 전달
+        return NativeHeelRaiseView(
+            activity,
+            messenger,
+            viewId,
+            args as? Map<String, Any> // Flutter에서 전달된 creationParams
+        )
     }
 }

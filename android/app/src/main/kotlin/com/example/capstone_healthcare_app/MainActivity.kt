@@ -2,6 +2,7 @@ package com.example.capstone_healthcare_app
 
 import com.example.capstone_healthcare_app.native.CalibrationViewFactory
 import com.example.capstone_healthcare_app.native.SquatViewFactory
+import com.example.capstone_healthcare_app.native.HeelRaiseViewFactory
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 
@@ -22,7 +23,7 @@ class MainActivity : FlutterActivity() {
             //발 뒤꿈치 들기 뷰
             registerViewFactory(
                 "NativeHeelRaiseView",
-                SquatViewFactory(
+                HeelRaiseViewFactory(
                     flutterEngine.dartExecutor.binaryMessenger,
                     this@MainActivity
                 )

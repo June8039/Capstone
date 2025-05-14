@@ -1,9 +1,9 @@
 package com.example.capstone_healthcare_app.motion
 
 import android.util.Log
-import android.graphics.PointF
 import com.google.mlkit.vision.pose.Pose
 import com.google.mlkit.vision.pose.PoseLandmark
+import kotlin.math.abs
 
 class SquatCounter(private val maxCount: Int) : MotionCounter {
     private var squatCount = 0
@@ -11,12 +11,8 @@ class SquatCounter(private val maxCount: Int) : MotionCounter {
     private var fullyStood = true
     private var listener: OnCountListener? = null
 
-    // 스쿼트 판단 엉덩이 위치 임계값
-    private val SQUAT_THRESHOLD = 110.0
-
-    // 팔 위치 판단 임계값
-    private val ARM_ANGLE_TARGET = 80.0
-    private val MAX_ARM_DEVIATION = 45.0
+    // 스쿼트 판단 엉덩이 위치 임계값 (앉았을 때 이 값보다 작아야 함)
+    private val SQUAT_THRESHOLD = 120.0
 
     override fun setOnCountListener(listener: OnCountListener?) {
         this.listener = listener
@@ -30,79 +26,55 @@ class SquatCounter(private val maxCount: Int) : MotionCounter {
         val rightHip = pose.getPoseLandmark(PoseLandmark.RIGHT_HIP)
         val rightKnee = pose.getPoseLandmark(PoseLandmark.RIGHT_KNEE)
 
-        val leftShoulder = pose.getPoseLandmark(PoseLandmark.LEFT_SHOULDER)
-        val leftElbow = pose.getPoseLandmark(PoseLandmark.LEFT_ELBOW)
-        val leftWrist = pose.getPoseLandmark(PoseLandmark.LEFT_WRIST)
-        val rightShoulder = pose.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER)
-        val rightElbow = pose.getPoseLandmark(PoseLandmark.RIGHT_ELBOW)
-        val rightWrist = pose.getPoseLandmark(PoseLandmark.RIGHT_WRIST)
+        if (leftHip == null || leftKnee == null || rightHip == null || rightKnee == null) return
 
-        if (leftHip == null || leftKnee == null || rightHip == null || rightKnee == null ||
-            leftShoulder == null || leftElbow == null || leftWrist == null ||
-            rightShoulder == null || rightElbow == null || rightWrist == null
-        ) return
-
-        val leftHipToKnee = Math.abs(leftHip.position.y - leftKnee.position.y)
-        val rightHipToKnee = Math.abs(rightHip.position.y - rightKnee.position.y)
+        // 엉덩이-무릎 거리 계산
+        val leftHipToKnee = abs(leftHip.position.y - leftKnee.position.y)
+        val rightHipToKnee = abs(rightHip.position.y - rightKnee.position.y)
         val averageDistance = (leftHipToKnee + rightHipToKnee) / 2
 
+        // 스쿼트 상태 판정
         val isSquatting = averageDistance < SQUAT_THRESHOLD
-        val armsExtended = areArmsInFront(pose)
+        val isStanding = averageDistance > SQUAT_THRESHOLD * 1.35f
 
-        if (!wasSquatting && isSquatting && fullyStood && armsExtended) {
+        // 상태 전이 및 실패 원인 상세 로그
+        val countCondition = !wasSquatting && isSquatting && fullyStood
+        if (countCondition) {
             squatCount++
             listener?.onCountChanged(squatCount)
             fullyStood = false
+            Log.d("SquatCounter", """
+                카운트 증가: $squatCount
+                [좌표] LH=${leftHip.position.y.toInt()}, LK=${leftKnee.position.y.toInt()}
+                      RH=${rightHip.position.y.toInt()}, RK=${rightKnee.position.y.toInt()}
+            """.trimIndent())
+        } else {
+            Log.d("SquatCounter", """
+                카운트 실패 사유:
+                ${if (wasSquatting) "▸ 이미 앉은 상태에서 시작" else ""}
+                ${if (!isSquatting) "▸ 스쿼트 깊이 부족 (현재: ${"%.1f".format(averageDistance)} < 임계값: $SQUAT_THRESHOLD)" else ""}
+                ${if (!fullyStood) "▸ 완전히 일어서지 않음" else ""}
+            """.trimIndent().replace(Regex("\\s+\n"), "\n"))
         }
 
-        if (averageDistance > SQUAT_THRESHOLD * 1.35f) {
-            fullyStood = true
-        }
-
+        // 상태 업데이트
         wasSquatting = isSquatting
+        if (isStanding) fullyStood = true
 
-        Log.d("SquatCounter",
-            "횟수: $squatCount, 평균거리: $averageDistance, 팔상태: ${if(armsExtended) "OK" else "Bad"}"
-        )
-    }
-
-    private fun areArmsInFront(pose: Pose): Boolean {
-        val leftShoulder = pose.getPoseLandmark(PoseLandmark.LEFT_SHOULDER)
-        val leftElbow = pose.getPoseLandmark(PoseLandmark.LEFT_ELBOW)
-        val rightShoulder = pose.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER)
-        val rightElbow = pose.getPoseLandmark(PoseLandmark.RIGHT_ELBOW)
-        val leftHip = pose.getPoseLandmark(PoseLandmark.LEFT_HIP)
-        val rightHip = pose.getPoseLandmark(PoseLandmark.RIGHT_HIP)
-
-        if (leftHip == null || rightHip == null ||
-            leftShoulder == null || leftElbow == null ||
-            rightShoulder == null || rightElbow == null
-        ) return false
-
-        val spineMid = PointF(
-            (leftHip.position.x + rightHip.position.x) / 2,
-            (leftHip.position.y + rightHip.position.y) / 2
-        )
-
-        val leftAngle = calculateAngle(spineMid, leftShoulder.position, leftElbow.position)
-        val rightAngle = calculateAngle(spineMid, rightShoulder.position, rightElbow.position)
-
-        return Math.abs(leftAngle - ARM_ANGLE_TARGET) < MAX_ARM_DEVIATION &&
-                Math.abs(rightAngle - ARM_ANGLE_TARGET) < MAX_ARM_DEVIATION
-    }
-
-    private fun calculateAngle(a: PointF, b: PointF, c: PointF): Double {
-        val angle = Math.toDegrees(
-            Math.atan2(c.y.toDouble() - b.y, c.x.toDouble() - b.x) -
-                    Math.atan2(a.y.toDouble() - b.y, a.x.toDouble() - b.x)
-        )
-        return if (angle > 180) 360 - angle else angle
+        // 매 프레임 상태 로그
+        Log.d("SquatCounter", """
+            [현재 상태] ${if (isSquatting) "⬇앉음" else "서있음"}
+            평균 거리: ${"%.1f".format(averageDistance)} 
+            이전 상태: ${if (wasSquatting) "앉음" else "서있음"}
+            완전 복귀: $fullyStood
+        """.trimIndent())
     }
 
     override fun reset() {
         squatCount = 0
         wasSquatting = false
         fullyStood = true
+        Log.d("SquatCounter", "카운트 리셋: 0")
     }
 
     override fun getCount(): Int = squatCount

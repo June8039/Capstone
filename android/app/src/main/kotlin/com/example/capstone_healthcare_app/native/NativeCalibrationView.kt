@@ -115,7 +115,6 @@ class NativeCalibrationView(
             .also { it.setSurfaceProvider(previewView.surfaceProvider) }
 
         val imageAnalysis = ImageAnalysis.Builder()
-            .setTargetResolution(Size(640, 480))
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also { it.setAnalyzer(cameraExecutor, this) }
@@ -218,6 +217,17 @@ class NativeCalibrationView(
         }
     }
 
+    private fun median(list: List<Float>): Double {
+        if (list.isEmpty()) return Double.NaN
+        val sorted = list.sorted()
+        val size = sorted.size
+        return if (size % 2 == 1) {
+            sorted[size / 2].toDouble()
+        } else {
+            (sorted[size / 2 - 1] + sorted[size / 2]) / 2.0
+        }
+    }
+
 
     private fun calculateBaseline() {
         if (calibrationPoses.size < 30) {
@@ -229,19 +239,23 @@ class NativeCalibrationView(
         calibrationPoses.flatMap { it.allPoseLandmarks }
             .groupBy { it.landmarkType }
             .forEach { (typeInt, landmarks) ->
-                // 기존 자동 키 생성
-                val avgX = landmarks.map { it.position.x }.average()
-                val avgY = landmarks.map { it.position.y }.average()
-                val typeName = typeInt.toString()
-                baselineValues["${typeName}_x"] = avgX
-                baselineValues["${typeName}_y"] = avgY
+                // X, Y 좌표 추출
+                val xs = landmarks.map { it.position.x }
+                val ys = landmarks.map { it.position.y }
 
-                // 명시적으로 left_heel_y, right_heel_y 키 추가
+                val medianX = median(xs)
+                val medianY = median(ys)
+
+                val typeName = typeInt.toString()
+                baselineValues["${typeName}_x"] = medianX
+                baselineValues["${typeName}_y"] = medianY
+
+                // 발 뒤꿈치 Y값 별도 저장
                 if (typeInt == PoseLandmark.LEFT_HEEL) {
-                    baselineValues["left_heel_y"] = avgY
+                    baselineValues["left_heel_y"] = medianY
                 }
                 if (typeInt == PoseLandmark.RIGHT_HEEL) {
-                    baselineValues["right_heel_y"] = avgY
+                    baselineValues["right_heel_y"] = medianY
                 }
             }
 

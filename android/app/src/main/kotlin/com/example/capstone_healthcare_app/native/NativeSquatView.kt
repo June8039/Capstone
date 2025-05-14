@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -31,8 +32,9 @@ import java.util.concurrent.Executors
 class NativeSquatView(
     private val activity: FlutterActivity,
     private val messenger: BinaryMessenger,
-    viewId: Int
-) : PlatformView {
+    viewId: Int,
+    creationParams: Map<String, Any>?
+) : PlatformView, ImageAnalysis.Analyzer {
 
     private val methodChannel = MethodChannel(messenger, "com.example.capstone_healthcare_app/squat")
     private val eventChannel = EventChannel(messenger, "com.example.capstone_healthcare_app/squat_events")
@@ -41,6 +43,8 @@ class NativeSquatView(
     private var eventSink: EventChannel.EventSink? = null
 
     // 뷰 계층 구조
+    private lateinit var previewView: PreviewView
+    private lateinit var posePainter: PosePainter
     private val containerLayout = FrameLayout(activity).apply {
         layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -48,29 +52,40 @@ class NativeSquatView(
         )
     }
 
-    private val previewView = PreviewView(activity).apply {
-        layoutParams = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT
-        )
-    }
-
-    private val posePainter = PosePainter(activity).apply {
-        layoutParams = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT
-        )
-        setBackgroundColor(Color.TRANSPARENT)
-    }
-
-    private val squatCounter = SquatCounter(10)
-    private var currentLensFacing = CameraSelector.LENS_FACING_BACK
+    private lateinit var squatCounter: SquatCounter
+    private var currentLensFacing = CameraSelector.LENS_FACING_FRONT
 
     init {
+        setupEventChannel()
+        setupMethodChannel()
+
+        // PreviewView 설정
+        previewView = PreviewView(activity).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE // TextureView 사용
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+        }
+
+
+        posePainter = PosePainter(activity).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.TRANSPARENT)
+            z = 1f
+        }
+
         containerLayout.addView(previewView)
         containerLayout.addView(posePainter)
-        setupMethodChannel()
-        setupEventChannel()
+        posePainter.bringToFront()
+
+        squatCounter = SquatCounter(
+            maxCount = 10
+        )
         startCamera()
     }
 
@@ -80,36 +95,22 @@ class NativeSquatView(
         eventChannel.setStreamHandler(object : EventChannel.StreamHandler {
             override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                 eventSink = events // 이벤트 전송 객체 저장
-                Log.d("NativeSquatView", "squat_events 채널 연결됨")
+                Log.d("NativeSquatView", "이벤트 채널 연결됨")
+                eventSink?.success(mapOf(
+                    "type" to "pose_update",
+                    "count" to squatCounter.getCount(),
+                    "status" to if (squatCounter.getCount() >= 10) "completed" else "active"
+                ))
             }
 
             override fun onCancel(arguments: Any?) {
                 eventSink = null // 이벤트 전송 객체 해제
-                Log.d("NativeSquatView", "squat_events 채널 연결 해제")
+                stopCameraAndAnalysis()
+                Log.d("NativeSquatView", "이벤트 채널 연결 해제")
             }
         })
     }
 
-    private fun handlePose(pose: Pose) {
-        squatCounter.onPoseDetected(pose)
-
-        // Flutter로 실시간 데이터 전송
-        eventSink?.success(mapOf(
-            "type" to "pose_update",
-            "count" to squatCounter.getCount(),
-            "status" to "active"
-        ))
-
-        methodChannel.invokeMethod("updateCount", squatCounter.getCount())
-    }
-
-    override fun dispose() {
-        cameraExecutor.shutdown()
-        eventSink?.endOfStream() //이벤트 스트림 종료 알림
-        eventChannel.setStreamHandler(null) // 핸들러 제거
-        containerLayout.removeAllViews()
-        Log.d("NativeSquatView", "리소스 해제 완료")
-    }
 
     private fun setupMethodChannel() {
         methodChannel.setMethodCallHandler { call, result ->
@@ -118,6 +119,17 @@ class NativeSquatView(
                     switchCamera()
                     result.success(null)
                 }
+
+                "resetCount" -> {
+                    squatCounter.reset()
+                    result.success(null)
+                }
+
+                "startCamera" -> {
+                    startCamera()
+                    result.success(null)
+                }
+
                 else -> result.notImplemented()
             }
         }
@@ -155,38 +167,7 @@ class NativeSquatView(
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
 
-        imageAnalysis.setAnalyzer(cameraExecutor, { imageProxy ->
-            val mediaImage = imageProxy.image
-            if (mediaImage != null) {
-                val image = InputImage.fromMediaImage(
-                    mediaImage,
-                    imageProxy.imageInfo.rotationDegrees
-                )
-                val options = PoseDetectorOptions.Builder()
-                    .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
-                    .build()
-                val poseDetector = PoseDetection.getClient(options)
-
-                poseDetector.process(image)
-                    .addOnSuccessListener { pose ->
-                        Log.d("NativeSquatView", "포즈 감지 성공: ${pose.allPoseLandmarks.size}개 랜드마크")
-                        posePainter.setPose(
-                            pose,
-                            mediaImage.width,
-                            mediaImage.height,
-                            currentLensFacing == CameraSelector.LENS_FACING_FRONT,
-                            imageProxy.imageInfo.rotationDegrees // 회전 각도 전달
-                        )
-                        handlePose(pose)
-                    }
-
-                    .addOnCompleteListener {
-                        imageProxy.close()
-                    }
-            } else {
-                imageProxy.close()
-            }
-        })
+        imageAnalysis.setAnalyzer(cameraExecutor, this)
 
         cameraProvider.bindToLifecycle(
             activity as LifecycleOwner,
@@ -194,6 +175,62 @@ class NativeSquatView(
             imageAnalysis
         )
     }
+
+    override fun analyze(imageProxy: ImageProxy) {
+        val mediaImage = imageProxy.image
+        if (mediaImage != null) {
+            val image = InputImage.fromMediaImage(
+                mediaImage,
+                imageProxy.imageInfo.rotationDegrees
+            )
+
+            val options = PoseDetectorOptions.Builder()
+                .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
+                .build()
+
+            val poseDetector = PoseDetection.getClient(options)
+
+            poseDetector.process(image)
+                .addOnSuccessListener { pose ->
+                    Log.d("NativeSquatView", "포즈 감지 성공: ${pose.allPoseLandmarks.size}개 랜드마크")
+
+                    posePainter.setPose(
+                        pose,
+                        mediaImage.width,
+                        mediaImage.height,
+                        currentLensFacing == CameraSelector.LENS_FACING_FRONT,
+                        imageProxy.imageInfo.rotationDegrees
+                    )
+
+                    handlePose(pose)
+                }
+                .addOnCompleteListener {
+                    imageProxy.close()
+                }
+        } else {
+            imageProxy.close()
+        }
+    }
+
+    private fun handlePose(pose: Pose) {
+        squatCounter.onPoseDetected(pose)
+        Log.d("NativeSquatView", "현재 카운트: ${squatCounter.getCount()}")
+
+        if (eventSink != null) {
+            eventSink?.success(
+                mapOf(
+                    "type" to "pose_update",
+                    "count" to squatCounter.getCount(),
+                    "status" to if (squatCounter.getCount() >= 10) "completed" else "active"
+                )
+            )
+            Log.d("NativeSquatView", "이벤트 전송: count=${squatCounter.getCount()}")
+        } else {
+            Log.e("NativeSquatView", "eventSink가 null입니다!")
+        }
+        methodChannel.invokeMethod("updateCount", squatCounter.getCount())
+    }
+
 
     private fun switchCamera() {
         val newLensFacing = if (currentLensFacing == CameraSelector.LENS_FACING_BACK) {
@@ -224,5 +261,33 @@ class NativeSquatView(
                 Log.e("NativeSquatView", "카메라 전환 실패", e)
             }
         }, ContextCompat.getMainExecutor(activity))
+    }
+
+    private fun stopCameraAndAnalysis() {
+        try {
+            val cameraProvider = cameraProviderFuture.get()
+            cameraProvider.unbindAll()
+            Log.d("NativeSquatView", "카메라 UseCase 해제 완료")
+        } catch (e: Exception) {
+            Log.e("NativeSquatView", "카메라 UseCase 해제 실패", e)
+        }
+
+        try {
+            if (!cameraExecutor.isShutdown) {
+                cameraExecutor.shutdownNow()
+                Log.d("NativeSquatView", "카메라 Executor 종료 완료")
+            }
+        } catch (e: Exception) {
+            Log.e("NativeSquatView", "카메라 Executor 종료 실패", e)
+        }
+    }
+
+
+    override fun dispose() {
+        cameraExecutor.shutdown()
+        eventSink?.endOfStream() //이벤트 스트림 종료 알림
+        eventChannel.setStreamHandler(null) // 핸들러 제거
+        containerLayout.removeAllViews()
+        Log.d("NativeSquatView", "리소스 해제 완료")
     }
 }

@@ -79,7 +79,7 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                   MaterialPageRoute(
                     builder: (_) => HeelRaiseScreen(
                       baselineValues: baselineValues,
-                      initialLensFacing: _currentLensFacing, // 현재 카메라 방향 전달
+                      initialLensFacing: _currentLensFacing,
                     ),
                   ),
                 );
@@ -116,7 +116,7 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
             child: AndroidView(
               viewType: 'NativeCalibrationView',
               creationParams: {
-                'initialLensFacing': widget.initialLensFacing,
+                'initialLensFacing': _currentLensFacing,
               },
               creationParamsCodec: StandardMessageCodec(),
               onPlatformViewCreated: (viewId) {
@@ -154,17 +154,19 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
 
   void _switchCamera() async {
     try {
-      // 네이티브에서 새로운 카메라 방향을 반환받아 상태 업데이트
       final newLensFacing = await _methodChannel.invokeMethod<int>('switchCamera');
       if (newLensFacing != null) {
         setState(() {
           _currentLensFacing = newLensFacing;
         });
+        // 변경된 방향을 Native에 즉시 반영
+        _methodChannel.invokeMethod('updateLensFacing', newLensFacing);
       }
     } catch (e) {
       debugPrint("카메라 전환 실패: $e");
     }
   }
+
 
   Widget _buildProgressUI() {
     return AnimatedOpacity(

@@ -12,6 +12,12 @@ class SquatViewFactory(
     private val activity: FlutterActivity
 ) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
-        return NativeSquatView(activity, messenger, viewId)
+        return NativeSquatView(
+            activity,
+            messenger,
+            viewId,
+            args as? Map<String, Any> // Flutter에서 전달된 creationParams
+        )
     }
 }
+

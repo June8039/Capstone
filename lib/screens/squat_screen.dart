@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class SquatScreen extends StatefulWidget {
-  const SquatScreen({super.key}); // 기준 자세 파라미터 제거
+  const SquatScreen({super.key});
 
   @override
   State<SquatScreen> createState() => _SquatScreenState();
@@ -17,32 +18,90 @@ class _SquatScreenState extends State<SquatScreen> {
 
   int _count = 0;
   bool _isCompleted = false;
-  late StreamSubscription _eventSubscription;
+  StreamSubscription? _eventSubscription;
+
+  late FlutterTts _flutterTts;
+  bool _isSpeaking = false;
+  int? _pendingCount;
 
   @override
   void initState() {
     super.initState();
-    _eventSubscription = _eventChannel.receiveBroadcastStream().listen((event) {
-      if (event is Map) {
-        if (event['type'] == 'pose_update') {
-          setState(() {
-            _count = event['count'] ?? _count;
-          });
-        } else if (event['type'] == 'completed') {
-          setState(() => _isCompleted = true);
-        }
+    _initTts();
+    _subscribeEventChannel();
+  }
+
+  void _initTts() async {
+    _flutterTts = FlutterTts();
+    await _flutterTts.setLanguage("ko-KR");
+    await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.setVolume(1.0);
+    await _flutterTts.awaitSpeakCompletion(true);
+
+    _flutterTts.setCompletionHandler(() {
+      _isSpeaking = false;
+      if (_pendingCount != null) {
+        final next = _pendingCount!;
+        _pendingCount = null;
+        _speakCount(next);
       }
     });
-    _startExercise();
+
+    _flutterTts.setCancelHandler(() {
+      _isSpeaking = false;
+      _pendingCount = null;
+    });
+
+    _flutterTts.setErrorHandler((msg) {
+      _isSpeaking = false;
+      _pendingCount = null;
+    });
+  }
+
+  void _subscribeEventChannel() {
+    _eventSubscription = _eventChannel.receiveBroadcastStream().listen(
+          (event) {
+        if (event is Map) {
+          debugPrint("이벤트 수신: $event");
+          if (event['type'] == 'pose_update') {
+            final newCount = event['count'] ?? _count;
+            if (newCount > _count) {
+              _speakCount(newCount);
+            }
+            setState(() => _count = newCount);
+            if (event['status'] == 'completed') {
+              setState(() => _isCompleted = true);
+            }
+          }
+        }
+      },
+      onError: (error) => debugPrint("이벤트 오류: $error"),
+    );
+  }
+
+  Future<void> _speakCount(int count) async {
+    if (_isSpeaking) {
+      _pendingCount = count;
+      return;
+    }
+
+    _isSpeaking = true;
+    await _flutterTts.speak("$count회");
   }
 
   void _startExercise() {
     _methodChannel.invokeMethod('startSquat');
   }
 
+  void _flipCamera() {
+    _methodChannel.invokeMethod('flipCamera');
+  }
+
   @override
   void dispose() {
-    _eventSubscription.cancel();
+    _methodChannel.invokeMethod('cancel');
+    _eventSubscription?.cancel();
+    _flutterTts.stop();
     super.dispose();
   }
 
@@ -87,30 +146,31 @@ class _SquatScreenState extends State<SquatScreen> {
                 Expanded(
                   child: Column(
                     children: [
-                      // 카메라 뷰
                       Expanded(
                         child: Stack(
                           children: [
-                            const AndroidView(
+                            AndroidView(
                               viewType: 'NativeSquatView',
                               creationParams: {},
                               creationParamsCodec: StandardMessageCodec(),
+                              onPlatformViewCreated: (id) {
+                                _subscribeEventChannel();
+                                _startExercise();
+                              },
                             ),
                           ],
                         ),
                       ),
-                      // 구분선
                       Container(
                         width: double.infinity,
                         height: 1,
                         color: Colors.grey[800],
                       ),
-                      // 예시 영상
                       AspectRatio(
                         aspectRatio: 4 / 3,
                         child: Container(
                           color: Colors.black,
-                          child: Center(
+                          child: const Center(
                             child: Text('스쿼트 예시 영상', style: TextStyle(color: Colors.white54)),
                           ),
                         ),
@@ -118,7 +178,6 @@ class _SquatScreenState extends State<SquatScreen> {
                     ],
                   ),
                 ),
-                // 카운트 표시 + 카메라 전환 버튼
                 Container(
                   color: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 15),
@@ -147,7 +206,6 @@ class _SquatScreenState extends State<SquatScreen> {
                 ),
               ],
             ),
-            // 완료 시 오버레이
             if (_isCompleted)
               Container(
                 color: Colors.black.withOpacity(0.7),
@@ -155,9 +213,6 @@ class _SquatScreenState extends State<SquatScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.emoji_events,
-                          color: Colors.amber, size: 80),
-                      const SizedBox(height: 20),
                       const Text(
                         '운동 완료!',
                         style: TextStyle(
@@ -178,9 +233,5 @@ class _SquatScreenState extends State<SquatScreen> {
         ),
       ),
     );
-  }
-
-  void _flipCamera() {
-    _methodChannel.invokeMethod('flipCamera');
   }
 }

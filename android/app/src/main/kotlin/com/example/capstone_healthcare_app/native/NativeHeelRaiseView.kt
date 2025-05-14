@@ -55,13 +55,26 @@ class NativeHeelRaiseView(
 
 
     private lateinit var heelRaiseCounter: HeelRaiseCounter
-    private var currentLensFacing = CameraSelector.LENS_FACING_BACK
+    private var currentLensFacing = CameraSelector.LENS_FACING_FRONT
 
     init {
         // 생성 파라미터에서 초기 렌즈 방향 추출
-        creationParams?.get("initialLensFacing")?.let {
-            currentLensFacing = it as Int
+        creationParams?.get("initialLensFacing")?.let { param ->
+            currentLensFacing = when (param) {
+                is Int -> param
+                is Long -> param.toInt()
+                is Double -> param.toInt()
+                else -> {
+                    Log.w("NativeHeelRaiseView",
+                        "Unknown type: ${param?.javaClass?.simpleName} → 기본값(전면) 사용"
+                    )
+                    CameraSelector.LENS_FACING_FRONT
+                }
+            }
         }
+        Log.d("NativeHeelRaiseView",
+            "초기 카메라 방향: ${if (currentLensFacing == CameraSelector.LENS_FACING_BACK) "후면" else "전면"}"
+        )
 
         // PreviewView 설정
         previewView = PreviewView(activity).apply {
@@ -162,6 +175,11 @@ class NativeHeelRaiseView(
                     switchCamera()
                     result.success(null)
                 }
+                "updateLensFacing" -> {
+                    val newLensFacing = call.arguments as Int
+                    updateLensFacing(newLensFacing)
+                    result.success(null)
+                }
                 "reset" -> {
                     heelRaiseCounter.reset()
                     result.success(null)
@@ -178,6 +196,15 @@ class NativeHeelRaiseView(
                 val cameraProvider = cameraProviderFuture.get()
                 cameraProvider.unbindAll()
 
+                val cameraSelector = CameraSelector.Builder()
+                    .requireLensFacing(currentLensFacing)
+                    .build()
+
+                Log.d("NativeHeelRaiseView",
+                    "실제 적용된 카메라: ${if (cameraSelector.lensFacing == CameraSelector.LENS_FACING_BACK) "후면" else "전면"}"
+                )
+
+
                 val preview = Preview.Builder()
                     .setTargetRotation(previewView.display.rotation)
                     .build()
@@ -187,10 +214,6 @@ class NativeHeelRaiseView(
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
                     .also { it.setAnalyzer(cameraExecutor, this) }
-
-                val cameraSelector = CameraSelector.Builder()
-                    .requireLensFacing(currentLensFacing)
-                    .build()
 
                 cameraProvider.bindToLifecycle(
                     activity as LifecycleOwner,
@@ -204,6 +227,13 @@ class NativeHeelRaiseView(
                 eventSink?.error("CAMERA_ERROR", e.message, null)
             }
         }, ContextCompat.getMainExecutor(activity))
+    }
+
+
+    fun updateLensFacing(newLensFacing: Int) {
+        currentLensFacing = newLensFacing
+        Log.d("NativeHeelRaiseView", "카메라 방향 업데이트: $newLensFacing")
+        startCamera() // 카메라 재시작
     }
 
 
@@ -287,6 +317,7 @@ class NativeHeelRaiseView(
                 Log.e("NativeHeelRaiseView", "카메라 전환 실패", e)
             }
         }, ContextCompat.getMainExecutor(activity))
+        updateLensFacing(newLensFacing)
     }
 
 

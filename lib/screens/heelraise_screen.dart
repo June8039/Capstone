@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class HeelRaiseScreen extends StatefulWidget {
   final Map<String, dynamic> baselineValues;
@@ -25,11 +26,49 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
   bool _isCompleted = false;
   StreamSubscription? _eventSubscription;
 
+  FlutterTts _flutterTts = FlutterTts();
+  bool _isSpeaking = false;
+  int? _pendingCount;
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint("HeelRaiseScreen initialLensFacing: ${widget.initialLensFacing}");
+    _initTts();
+  }
+
   @override
   void dispose() {
     _methodChannel.invokeMethod('cancel');
     _eventSubscription?.cancel();
+    _flutterTts.stop();
     super.dispose();
+  }
+
+  void _initTts() async {
+    await _flutterTts.setLanguage("ko-KR");
+    await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.setVolume(1.0);
+    await _flutterTts.awaitSpeakCompletion(true);
+
+    _flutterTts.setCompletionHandler(() {
+      _isSpeaking = false;
+      if (_pendingCount != null) {
+        final next = _pendingCount!;
+        _pendingCount = null;
+        _speakCount(next);
+      }
+    });
+
+    _flutterTts.setCancelHandler(() {
+      _isSpeaking = false;
+      _pendingCount = null;
+    });
+
+    _flutterTts.setErrorHandler((msg) {
+      _isSpeaking = false;
+      _pendingCount = null;
+    });
   }
 
   void _flipCamera() {
@@ -42,14 +81,12 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
       return;
     }
 
-    // 키 존재 여부 검증
     if (!widget.baselineValues.containsKey('left_heel_y') ||
         !widget.baselineValues.containsKey('right_heel_y')) {
       print('필수 키 누락: left_heel_y 또는 right_heel_y');
       return;
     }
 
-    // 타입 검증 및 변환
     final convertedValues = {
       'left_heel_y': (widget.baselineValues['left_heel_y'] as num).toDouble(),
       'right_heel_y': (widget.baselineValues['right_heel_y'] as num).toDouble(),
@@ -58,18 +95,31 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
     _methodChannel.invokeMethod('initialize', convertedValues);
   }
 
-
   void _subscribeEventChannel() {
     _eventSubscription = _eventChannel.receiveBroadcastStream().listen((event) {
       if (event is Map) {
         if (event['type'] == 'pose_update') {
-          setState(() => _count = event['count'] ?? _count);
+          final newCount = event['count'] ?? _count;
+          if (newCount > _count) {
+            _speakCount(newCount);
+          }
+          setState(() => _count = newCount);
           if (event['status'] == 'completed') {
             setState(() => _isCompleted = true);
           }
         }
       }
     });
+  }
+
+  Future<void> _speakCount(int count) async {
+    if (_isSpeaking) {
+      _pendingCount = count;
+      return;
+    }
+
+    _isSpeaking = true;
+    await _flutterTts.speak("$count회");
   }
 
   @override
@@ -114,7 +164,6 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                 Expanded(
                   child: Column(
                     children: [
-                      // 카메라 뷰 (상단)
                       Expanded(
                         child: Stack(
                           children: [
@@ -122,11 +171,10 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                               viewType: 'NativeHeelRaiseView',
                               creationParams: {
                                 'baselineValues': widget.baselineValues,
-                                'initialLensFacing': widget.initialLensFacing,
+                                'initialLensFacing': widget.initialLensFacing.toInt(),
                               },
                               creationParamsCodec: StandardMessageCodec(),
                               onPlatformViewCreated: (viewId) {
-                                // 네이티브 뷰 attach 이후에만 이벤트 구독 및 초기화
                                 _subscribeEventChannel();
                                 _startExercise();
                               },
@@ -134,13 +182,11 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                           ],
                         ),
                       ),
-                      // 구분선
                       Container(
                         width: double.infinity,
                         height: 1,
                         color: Colors.grey[800],
                       ),
-                      // 예시 영상
                       AspectRatio(
                         aspectRatio: 4 / 3,
                         child: Container(
@@ -156,7 +202,6 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                     ],
                   ),
                 ),
-                // 카운트 표시 + 카메라 전환 버튼
                 Container(
                   color: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 15),
@@ -185,7 +230,6 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                 ),
               ],
             ),
-            // 완료 시 오버레이
             if (_isCompleted)
               Container(
                 color: Colors.black.withOpacity(0.7),
@@ -193,9 +237,6 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.emoji_events,
-                          color: Colors.amber, size: 80),
-                      const SizedBox(height: 20),
                       const Text(
                         '운동 완료!',
                         style: TextStyle(

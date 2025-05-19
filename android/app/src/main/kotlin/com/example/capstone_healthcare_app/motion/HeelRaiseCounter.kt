@@ -9,7 +9,7 @@ class HeelRaiseCounter(
     private val maxCount: Int,
     private val baselineLeftHeelY: Float,
     private val baselineRightHeelY: Float,
-    private val raiseRatio: Float = 0.04f,
+    private val raiseRatio: Float = 0.03f,
     private val returnThresholdRatio: Float = 0.12f
 ) : MotionCounter {
 

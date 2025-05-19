@@ -187,8 +187,6 @@ class NativeCalibrationView(
     }
 
     private fun handlePose(pose: Pose) {
-        Log.d("Calibration", "포즈 감지 성공: ${pose.allPoseLandmarks.size}개 랜드마크")
-
         if (isHighConfidencePose(pose)) {
             calibrationPoses.add(pose)
             val progress = calibrationPoses.size.toDouble() / 100
@@ -205,17 +203,17 @@ class NativeCalibrationView(
     }
 
     private fun isHighConfidencePose(pose: Pose): Boolean {
-        val minConfidence = 0.2f
-        val requiredLandmarks = listOf(
-            PoseLandmark.LEFT_SHOULDER,
-            PoseLandmark.RIGHT_SHOULDER,
-            PoseLandmark.LEFT_HIP,
-            PoseLandmark.RIGHT_HIP
-        )
-        return requiredLandmarks.all {
-            pose.getPoseLandmark(it)?.inFrameLikelihood ?: 0f >= minConfidence
+        val minConfidence = 0.6f
+        for (i in 0..32) {
+            val landmark = pose.getPoseLandmark(i)
+            if (landmark == null || landmark.inFrameLikelihood < minConfidence) {
+                Log.d("Calibration", "랜드마크 $i 누락 또는 신뢰도 부족: ${landmark?.inFrameLikelihood}")
+                return false
+            }
         }
+        return true
     }
+
 
     private fun median(list: List<Float>): Double {
         if (list.isEmpty()) return Double.NaN

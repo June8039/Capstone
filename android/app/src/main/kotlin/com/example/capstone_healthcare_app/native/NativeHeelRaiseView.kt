@@ -109,7 +109,7 @@ class NativeHeelRaiseView(
         heelRaiseCounter = HeelRaiseCounter(
             maxCount = 10,
             baselineLeftHeelY = baselineLeftHeelY,
-            baselineRightHeelY = baselineRightHeelY
+            baselineRightHeelY = baselineRightHeelY,
         )
 
         // 채널 설정
@@ -154,7 +154,7 @@ class NativeHeelRaiseView(
                         heelRaiseCounter = HeelRaiseCounter(
                             maxCount = 10,
                             baselineLeftHeelY = leftHeelY,
-                            baselineRightHeelY = rightHeelY
+                            baselineRightHeelY = rightHeelY,
                         )
                         result.success(null)
                     } catch (e: Exception) {

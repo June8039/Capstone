@@ -49,9 +49,9 @@ class ExerciseScreen extends StatelessWidget {
       body: Center(
         child: Container(
           width: 300,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:CrossAxisAlignment.start,
             children: [
               const Text('운동계획', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
@@ -74,12 +74,19 @@ class ExerciseScreen extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.only(left: 16.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('난이도 1'),
-                    Text('난이도 2'),
-                    Text('난이도 3'),
-                  ],
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
+                    children: [
+                      OutlinedButton( onPressed: () {
+                        // go to the exercise page
+                      }, child: Text("난이도 1"), ),
+                      OutlinedButton( onPressed: () {
+                      // go to the exercise page
+                      }, child: Text("난이도 2"), ),
+                      OutlinedButton( onPressed: () {
+                        // go to the exercise page
+                      }, child: Text("난이도 3"), ),
+                    ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -104,9 +111,15 @@ class ExerciseScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('난이도 1'),
-                    Text('난이도 2'),
-                    Text('난이도 3'),
+                    OutlinedButton( onPressed: () {
+                      // go to the exercise page
+                    }, child: Text("난이도 1"), ),
+                    OutlinedButton( onPressed: () {
+                      // go to the exercise page
+                    }, child: Text("난이도 2"), ),
+                    OutlinedButton( onPressed: () {
+                      // go to the exercise page
+                    }, child: Text("난이도 3"), ),
                   ],
                 ),
               )

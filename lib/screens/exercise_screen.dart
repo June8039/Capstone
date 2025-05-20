@@ -71,7 +71,7 @@ class ExerciseScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 16.0),
                 child: Column(
                   crossAxisAlignment:
@@ -106,7 +106,7 @@ class ExerciseScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

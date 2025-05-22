@@ -64,17 +64,10 @@ class NativeHeelRaiseView(
                 is Int -> param
                 is Long -> param.toInt()
                 is Double -> param.toInt()
-                else -> {
-                    Log.w("NativeHeelRaiseView",
-                        "Unknown type: ${param?.javaClass?.simpleName} → 기본값(전면) 사용"
-                    )
-                    CameraSelector.LENS_FACING_FRONT
-                }
+                else -> CameraSelector.LENS_FACING_FRONT
             }
         }
-        Log.d("NativeHeelRaiseView",
-            "초기 카메라 방향: ${if (currentLensFacing == CameraSelector.LENS_FACING_BACK) "후면" else "전면"}"
-        )
+        Log.d("NativeHeelRaiseView", "초기 카메라 방향: ${if (currentLensFacing == CameraSelector.LENS_FACING_BACK) "후면" else "전면"}")
 
         // PreviewView 설정
         previewView = PreviewView(activity).apply {

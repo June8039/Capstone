@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:video_player/video_player.dart';
+
 
 class HeelRaiseScreen extends StatefulWidget {
   final Map<String, dynamic> baselineValues;
@@ -9,7 +11,7 @@ class HeelRaiseScreen extends StatefulWidget {
   const HeelRaiseScreen({
     super.key,
     required this.baselineValues,
-    required this.initialLensFacing,
+    this.initialLensFacing = 0,
   });
 
   @override
@@ -30,11 +32,24 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
   bool _isSpeaking = false;
   int? _pendingCount;
 
+  late VideoPlayerController _videoController;
+  late Future<void> _initializeVideoPlayerFuture;
+
   @override
   void initState() {
     super.initState();
     debugPrint("HeelRaiseScreen initialLensFacing: ${widget.initialLensFacing}");
     _initTts();
+
+    _videoController = VideoPlayerController.asset(
+      'assets/videos/heel_raise_example.mp4',
+    );
+    _initializeVideoPlayerFuture = _videoController.initialize().then((_) {
+      setState(() {});
+      _videoController.setLooping(true); // 반복 재생
+      _videoController.setVolume(0.0);
+      _videoController.play();           // 자동 재생
+    });
   }
 
   @override
@@ -42,6 +57,7 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
     _methodChannel.invokeMethod('cancel');
     _eventSubscription?.cancel();
     _flutterTts.stop();
+    _videoController.dispose();
     super.dispose();
   }
 
@@ -106,6 +122,7 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
           setState(() => _count = newCount);
           if (event['status'] == 'completed') {
             setState(() => _isCompleted = true);
+            _videoController.pause(); // 운동 완료 시 영상 멈춤
           }
         }
       }
@@ -121,6 +138,7 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
     _isSpeaking = true;
     await _flutterTts.speak("$count회");
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -189,14 +207,15 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                       ),
                       AspectRatio(
                         aspectRatio: 4 / 3,
-                        child: Container(
-                          color: Colors.black,
-                          child: const Center(
-                            child: Text(
-                              '발 뒤꿈치 들기 예시 영상',
-                              style: TextStyle(color: Colors.white54),
-                            ),
-                          ),
+                        child: FutureBuilder(
+                          future: _initializeVideoPlayerFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.done) {
+                              return VideoPlayer(_videoController);
+                            } else {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+                          },
                         ),
                       ),
                     ],

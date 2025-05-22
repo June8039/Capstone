@@ -261,7 +261,8 @@ class NativeCalibrationView(
             sendEvent(
                 mapOf(
                     "type" to "completed",
-                    "baselineValues" to baselineValues
+                    "baselineValues" to baselineValues,
+                    "lensFacing" to currentLensFacing
                 )
             )
             calibrationPoses.clear()

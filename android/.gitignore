@@ -11,3 +11,7 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+**/.cxx/
+**/android_gradle_build*.json
+**/index-*.json

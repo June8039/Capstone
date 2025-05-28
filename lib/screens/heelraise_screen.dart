@@ -35,6 +35,10 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
   late VideoPlayerController _videoController;
   late Future<void> _initializeVideoPlayerFuture;
 
+  late Stopwatch _stopwatch;
+  late Timer _timer;
+  String _elapsedTime = "00:00";
+
   @override
   void initState() {
     super.initState();
@@ -50,10 +54,31 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
       _videoController.setVolume(0.0);
       _videoController.play();           // 자동 재생
     });
+
+    _stopwatch = Stopwatch();
+    // 타이머 시작
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _stopwatch.start();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final elapsed = _stopwatch.elapsed;
+      setState(() {
+        _elapsedTime =
+        "${elapsed.inMinutes.toString().padLeft(2, '0')}:${(elapsed.inSeconds % 60).toString().padLeft(2, '0')}";
+      });
+    });
+  }
+
+  void _stopTimer() {
+    _stopwatch.stop();
+    _timer.cancel();
   }
 
   @override
   void dispose() {
+    _stopTimer();
     _methodChannel.invokeMethod('cancel');
     _eventSubscription?.cancel();
     _flutterTts.stop();
@@ -122,6 +147,7 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
           setState(() => _count = newCount);
           if (event['status'] == 'completed') {
             setState(() => _isCompleted = true);
+            _stopTimer();
             _videoController.pause(); // 운동 완료 시 영상 멈춤
           }
         }
@@ -178,6 +204,18 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                       ),
                     ),
                   ],
+                ),
+                // 타이머 표시
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+                  child: Text(
+                    '경과 시간: $_elapsedTime',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
                 Expanded(
                   child: Column(

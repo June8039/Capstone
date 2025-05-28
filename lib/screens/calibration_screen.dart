@@ -74,12 +74,13 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
               setState(() => _isCompleted = true);
               final baselineValues =
               Map<String, dynamic>.from(event['baselineValues']);
+              final lensFacing = event['lensFacing'] as int? ?? widget.initialLensFacing;
               Future.microtask(() {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
                     builder: (_) => HeelRaiseScreen(
                       baselineValues: baselineValues,
-                      initialLensFacing: _currentLensFacing,
+                      initialLensFacing: lensFacing,
                     ),
                   ),
                 );

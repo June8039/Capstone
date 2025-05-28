@@ -1,2 +1,0 @@
-C:/Users/PC/AndroidStudioProjects/Capstone/android/app/.cxx/Debug/5w692c6u/x86/CMakeFiles/edit_cache.dir
-C:/Users/PC/AndroidStudioProjects/Capstone/android/app/.cxx/Debug/5w692c6u/x86/CMakeFiles/rebuild_cache.dir

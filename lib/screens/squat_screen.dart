@@ -24,11 +24,34 @@ class _SquatScreenState extends State<SquatScreen> {
   bool _isSpeaking = false;
   int? _pendingCount;
 
+  late Stopwatch _stopwatch;
+  late Timer _timer;
+  String _elapsedTime = "00:00";
+
   @override
   void initState() {
     super.initState();
     _initTts();
     _subscribeEventChannel();
+    _stopwatch = Stopwatch();
+    // 타이머 시작
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _stopwatch.start();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final elapsed = _stopwatch.elapsed;
+      setState(() {
+        _elapsedTime =
+        "${elapsed.inMinutes.toString().padLeft(2, '0')}:${(elapsed.inSeconds % 60).toString().padLeft(2, '0')}";
+      });
+    });
+  }
+
+  void _stopTimer() {
+    _stopwatch.stop();
+    _timer.cancel();
   }
 
   void _initTts() async {
@@ -99,6 +122,7 @@ class _SquatScreenState extends State<SquatScreen> {
 
   @override
   void dispose() {
+    _stopTimer();
     _methodChannel.invokeMethod('cancel');
     _eventSubscription?.cancel();
     _flutterTts.stop();
@@ -142,6 +166,18 @@ class _SquatScreenState extends State<SquatScreen> {
                       ),
                     ),
                   ],
+                ),
+                // 타이머 표시
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+                  child: Text(
+                    '경과 시간: $_elapsedTime',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
                 Expanded(
                   child: Column(

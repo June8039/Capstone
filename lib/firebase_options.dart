@@ -17,17 +17,29 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      return web;
+      throw UnsupportedError(
+        'DefaultFirebaseOptions have not been configured for web - '
+        'you can reconfigure this by running the FlutterFire CLI again.',
+      );
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        return ios;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for ios - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.macOS:
-        return macos;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.windows:
-        return windows;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for windows - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -40,52 +52,12 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAxHK9ULEV8d4ln8f7DMtCAJyhOik12iXE',
-    appId: '1:112710046445:web:c5f82a86ddebf1a28c32e4',
-    messagingSenderId: '112710046445',
-    projectId: 'capstone-11bce',
-    authDomain: 'capstone-11bce.firebaseapp.com',
-    databaseURL: 'https://capstone-11bce-default-rtdb.firebaseio.com',
-    storageBucket: 'capstone-11bce.firebasestorage.app',
-  );
-
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCoIOz6Wde5iRAOlAwYteJsm7FC6sZUUlM',
     appId: '1:112710046445:android:95fac085ac7bd5c08c32e4',
     messagingSenderId: '112710046445',
     projectId: 'capstone-11bce',
-    databaseURL: 'https://capstone-11bce-default-rtdb.firebaseio.com',
     storageBucket: 'capstone-11bce.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyApHm4ndsbi5qm662NxYBU52lBakW5ozpU',
-    appId: '1:112710046445:ios:c94eefd5aa32dffc8c32e4',
-    messagingSenderId: '112710046445',
-    projectId: 'capstone-11bce',
     databaseURL: 'https://capstone-11bce-default-rtdb.firebaseio.com',
-    storageBucket: 'capstone-11bce.firebasestorage.app',
-    iosBundleId: 'com.example.capstoneHealthcareApp',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyApHm4ndsbi5qm662NxYBU52lBakW5ozpU',
-    appId: '1:112710046445:ios:c94eefd5aa32dffc8c32e4',
-    messagingSenderId: '112710046445',
-    projectId: 'capstone-11bce',
-    databaseURL: 'https://capstone-11bce-default-rtdb.firebaseio.com',
-    storageBucket: 'capstone-11bce.firebasestorage.app',
-    iosBundleId: 'com.example.capstoneHealthcareApp',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAxHK9ULEV8d4ln8f7DMtCAJyhOik12iXE',
-    appId: '1:112710046445:web:8ce859e8b165f4d08c32e4',
-    messagingSenderId: '112710046445',
-    projectId: 'capstone-11bce',
-    authDomain: 'capstone-11bce.firebaseapp.com',
-    databaseURL: 'https://capstone-11bce-default-rtdb.firebaseio.com',
-    storageBucket: 'capstone-11bce.firebasestorage.app',
   );
 }

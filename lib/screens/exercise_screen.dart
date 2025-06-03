@@ -56,6 +56,7 @@ class ExerciseScreen extends StatelessWidget {
               const Text('운동계획', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               // 운동 1 (클릭 시 CalibrationScreen으로 이동)
+
               GestureDetector(
                 onTap: () => _startHeelRaiseFlow(context),
                 child: Container(
@@ -71,23 +72,10 @@ class ExerciseScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              Padding(
-                padding: EdgeInsets.only(left: 16.0),
-                child: Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
-                    children: [
-                      OutlinedButton( onPressed: () {
-                        // go to the exercise page
-                      }, child: Text("난이도 1"), ),
-                      OutlinedButton( onPressed: () {
-                      // go to the exercise page
-                      }, child: Text("난이도 2"), ),
-                      OutlinedButton( onPressed: () {
-                        // go to the exercise page
-                      }, child: Text("난이도 3"), ),
-                    ],
-                ),
+              IconButton(
+                  icon: Image.asset('Images/calf_raise.png'),
+                  iconSize: 50,
+                  onPressed: () => _startHeelRaiseFlow(context),
               ),
               const SizedBox(height: 16),
               // 운동 2 (스쿼트)
@@ -106,23 +94,11 @@ class ExerciseScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              Padding(
-                padding: EdgeInsets.only(left: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    OutlinedButton( onPressed: () {
-                      // go to the exercise page
-                    }, child: Text("난이도 1"), ),
-                    OutlinedButton( onPressed: () {
-                      // go to the exercise page
-                    }, child: Text("난이도 2"), ),
-                    OutlinedButton( onPressed: () {
-                      // go to the exercise page
-                    }, child: Text("난이도 3"), ),
-                  ],
-                ),
-              )
+              IconButton(
+                  icon: Image.asset('Images/squat.png'),
+                  iconSize: 50,
+                  onPressed: () => _startHeelRaiseFlow(context),,
+              ),
             ],
           ),
         ),

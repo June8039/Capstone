@@ -97,7 +97,7 @@ class ExerciseScreen extends StatelessWidget {
               IconButton(
                   icon: Image.asset('Images/squat.png'),
                   iconSize: 50,
-                  onPressed: () => _startHeelRaiseFlow(context),,
+                  onPressed: () => _startHeelRaiseFlow(context),
               ),
             ],
           ),

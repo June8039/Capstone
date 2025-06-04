@@ -73,7 +73,7 @@ class ExerciseScreen extends StatelessWidget {
                 ),
               ),
               IconButton(
-                  icon: Image.asset('Images/calf_raise.png'),
+                  icon: Image.asset('assets/Images/calf_raise.png'),
                   iconSize: 50,
                   onPressed: () => _startHeelRaiseFlow(context),
               ),
@@ -95,7 +95,7 @@ class ExerciseScreen extends StatelessWidget {
                 ),
               ),
               IconButton(
-                  icon: Image.asset('Images/squat.png'),
+                  icon: Image.asset('assets/Images/squat.png'),
                   iconSize: 50,
                   onPressed: () => _startHeelRaiseFlow(context),
               ),

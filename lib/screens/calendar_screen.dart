@@ -53,13 +53,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Add New Event'),
+          title: const Text('할 일 추가하기'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Event Title'),
+                  decoration: const InputDecoration(labelText: '제목'),
                   onChanged: (value) {
                     title = value;
                   },
@@ -78,7 +78,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Description'),
+                  decoration: const InputDecoration(labelText: '내용'),
                   maxLines: 3,
                   onChanged: (value) {
                     description = value;
@@ -150,6 +150,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             },
             eventLoader: _getEventsForDay,
           ),
+
           const SizedBox(height: 8),
           Expanded(
             child: ListView.builder(

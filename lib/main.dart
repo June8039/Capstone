@@ -52,8 +52,8 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     //all pages should be defined here
-    const ExerciseScreen(),
-    const CalendarScreen(), // Create this or any other screen
+    const CalendarScreen(),
+    const ExerciseScreen(), // Create this or any other screen
   ];
 
   void _onItemTapped(int index) {
@@ -79,18 +79,17 @@ class _MainScreenState extends State<MainScreen> {
         },
         items: const [
           BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_month),
+              label: '캘린더'
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.self_improvement),
             label: '운동',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: '캘린더',
-          ),
-          BottomNavigationBarItem(
               icon: Icon(Icons.insert_chart),
               label: '나의 기록'
-          ),
-
+          )
         ],
       ),
     );

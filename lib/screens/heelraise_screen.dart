@@ -131,6 +131,10 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
     final convertedValues = {
       'left_heel_y': (widget.baselineValues['left_heel_y'] as num).toDouble(),
       'right_heel_y': (widget.baselineValues['right_heel_y'] as num).toDouble(),
+      if (widget.baselineValues['left_eye_y'] != null)
+        'left_eye_y': (widget.baselineValues['left_eye_y'] as num).toDouble(),
+      if (widget.baselineValues['right_eye_y'] != null)
+        'right_eye_y': (widget.baselineValues['right_eye_y'] as num).toDouble(),
     };
     _methodChannel.invokeMethod('resetCount');
     _methodChannel.invokeMethod('initialize', convertedValues);
@@ -275,12 +279,6 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                             ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.cameraswitch,
-                            color: Colors.white, size: 28),
-                        onPressed: _flipCamera,
-                        tooltip: '카메라 전환',
                       ),
                     ],
                   ),

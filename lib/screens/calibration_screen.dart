@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'heelraise_screen.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class CalibrationScreen extends StatefulWidget {
   final int initialLensFacing;
@@ -25,10 +26,15 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
   bool _isCompleted = false;
   bool _hasPermission = false;
   StreamSubscription? _eventSubscription;
+  String _positionFeedback = '화면 중앙의 녹색 박스 안에 서주세요';
+  late FlutterTts _flutterTts;
 
   @override
   void initState() {
     super.initState();
+    _initTts().then((_) {
+      _speakGuideBoxInstruction();
+    });
     _currentLensFacing = widget.initialLensFacing;
     _requestCameraPermission();
   }
@@ -56,6 +62,17 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
     }
   }
 
+  Future<void> _initTts() async {
+    _flutterTts = FlutterTts();
+    await _flutterTts.setLanguage('ko-KR');
+    await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.setVolume(1.0);
+  }
+
+  Future<void> _speakGuideBoxInstruction() async {
+    await _flutterTts.speak('화면 중앙의 녹색 박스 안에 서주세요');
+  }
+
   void _setupEventListeners() {
     _eventSubscription?.cancel();
     _eventSubscription =
@@ -68,20 +85,31 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
               debugPrint("진행률 업데이트 수신: ${event['value']}");
               setState(() => _progress = (event['value'] as num).toDouble());
             }
+            // 위치 안내 메시지 업데이트
+            else if (event['type'] == 'position_status') {
+              final isInBox = event['isInBox'] as bool;
+              setState(() {
+                _positionFeedback = isInBox
+                    ? '올바른 위치입니다!'
+                    : '화면 중앙의 녹색 박스 안에 서주세요';
+              });
+            }
             // 완료 이벤트 로그 추가
             else if (event['type'] == 'completed') {
               debugPrint("기준 측정 완료 데이터 수신: ${event['baselineValues']}");
               setState(() => _isCompleted = true);
               final baselineValues =
               Map<String, dynamic>.from(event['baselineValues']);
-              final lensFacing = event['lensFacing'] as int? ?? widget.initialLensFacing;
+              final lensFacing = event['lensFacing'] as int? ??
+                  widget.initialLensFacing;
               Future.microtask(() {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (_) => HeelRaiseScreen(
-                      baselineValues: baselineValues,
-                      initialLensFacing: lensFacing,
-                    ),
+                    builder: (_) =>
+                        HeelRaiseScreen(
+                          baselineValues: baselineValues,
+                          initialLensFacing: lensFacing,
+                        ),
                   ),
                 );
               });
@@ -100,6 +128,7 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
       debugPrint("스트림 해제 중 오류 무시: $e");
     }
     _eventSubscription = null;
+    _flutterTts.stop();
     super.dispose();
   }
 
@@ -108,13 +137,10 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('기준 자세 측정')),
       body: _hasPermission
-          ? Stack(
-        children: [
-          // 1. 카메라 미리보기
-          SizedBox(
-            width: double.infinity,
-            height: double.infinity,
-            child: AndroidView(
+          ? SafeArea(
+        child: Stack(
+          children: [
+            AndroidView(
               viewType: 'NativeCalibrationView',
               creationParams: {
                 'initialLensFacing': _currentLensFacing,
@@ -128,77 +154,43 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                 });
               },
             ),
-          ),
-          // 2. 진행률 UI
-          if (!_isCompleted)
-            _buildProgressUI(),
-          // 3. 카메라 전환 버튼 (
-          if (!_isCompleted)
-            Positioned(
-              bottom: 20,
-              right: 20,
-              child: IconButton(
-                icon: const Icon(Icons.cameraswitch,
-                    color: Colors.white,
-                    size: 28
+            // 2. 진행률 UI
+            if (!_isCompleted)
+              _buildProgressUI(),
+            // 3. 위치 안내 메시지
+            if (!_isCompleted)
+              Positioned(
+                bottom: 100,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    _positionFeedback,
+                    style: const TextStyle(color: Colors.white, fontSize: 20),
+                  ),
                 ),
-                onPressed: _switchCamera,
-                tooltip: '카메라 전환',
               ),
-            ),
-        ],
+          ],
+        ),
       )
           : const Center(child: CircularProgressIndicator()),
     );
   }
 
-
-  void _switchCamera() async {
-    try {
-      final newLensFacing = await _methodChannel.invokeMethod<int>('switchCamera');
-      if (newLensFacing != null) {
-        setState(() {
-          _currentLensFacing = newLensFacing;
-        });
-        // 변경된 방향을 Native에 즉시 반영
-        _methodChannel.invokeMethod('updateLensFacing', newLensFacing);
-      }
-    } catch (e) {
-      debugPrint("카메라 전환 실패: $e");
-    }
-  }
-
-
   Widget _buildProgressUI() {
     return AnimatedOpacity(
-      opacity: _progress < 1.0 ? 1.0 : 0.0, // 진행률 100% 미만일 때만 표시
+      opacity: _isCompleted ? 0.0 : 1.0, // 완료 시 숨김
       duration: const Duration(milliseconds: 300),
       child: Container(
         color: Colors.black.withOpacity(0.5),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                value: _progress,
-                color: Colors.white,
-                strokeWidth: 6,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                '${(_progress * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(
-                  fontSize: 32,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                '카메라 앞에서 기본 자세를 유지해주세요',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ],
+        child: const Center(
+          child: Text(
+            '카메라 앞에서 기본 자세를 유지해주세요',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),

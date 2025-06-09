@@ -29,6 +29,16 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Locale
+import androidx.camera.video.*
+import androidx.camera.video.VideoCapture
+import androidx.camera.video.Recorder
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Quality
+import androidx.camera.video.VideoRecordEvent
+import androidx.camera.video.FileOutputOptions
 
 class NativeHeelRaiseView(
     private val activity: FlutterActivity,
@@ -37,11 +47,18 @@ class NativeHeelRaiseView(
     creationParams: Map<String, Any>?
 ) : PlatformView, ImageAnalysis.Analyzer {
 
+    // 한 번만 녹화 중지 호출하기 위한 플래그
+    private var hasStoppedRecording = false
+
+
     private val methodChannel = MethodChannel(messenger, "com.example.capstone_healthcare_app/heel_raise")
     private val eventChannel = EventChannel(messenger, "com.example.capstone_healthcare_app/heel_raise_events")
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
     private var eventSink: EventChannel.EventSink? = null
+
+    private var videoCapture: VideoCapture<Recorder>? = null
+    private var recording: Recording? = null
 
     // 뷰 계층 구조
     private lateinit var previewView: PreviewView
@@ -177,6 +194,25 @@ class NativeHeelRaiseView(
                     heelRaiseCounter.reset()
                     result.success(null)
                 }
+                "startRecording" -> {
+                    try {
+                        val outputPath = call.argument<String>("outputPath")
+                        if (outputPath == null) {
+                            result.error("INVALID_ARGUMENT", "Output path is required", null)
+                            return@setMethodCallHandler
+                        }
+                        startRecording(outputPath, result)
+                    } catch (e: Exception) {
+                        result.error("RECORDING_ERROR", "Failed to start recording: ${e.message}", null)
+                    }
+                }
+                "stopRecording" -> {
+                    try {
+                        stopRecording(result)
+                    } catch (e: Exception) {
+                        result.error("RECORDING_ERROR", "Failed to stop recording: ${e.message}", null)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
@@ -281,16 +317,23 @@ class NativeHeelRaiseView(
     }
 
     private fun handlePose(pose: Pose) {
+        // 카운트 갱신
         heelRaiseCounter.onPoseDetected(pose)
+        val count = heelRaiseCounter.getCount()
+        val status = if (count >= 10) "completed" else "active"
 
-        // Flutter로 실시간 데이터 전송
+        // Flutter로 실시간 데이터 전송 (status == "completed" 를 Flutter에서 감지)
         eventSink?.success(mapOf(
             "type" to "pose_update",
-            "count" to heelRaiseCounter.getCount(),
-            "status" to if (heelRaiseCounter.getCount() >= 10) "completed" else "active"
+            "count" to count,
+            "status" to status,
         ))
-
-        methodChannel.invokeMethod("updateCount", heelRaiseCounter.getCount())
+        // 3) 10회 달성 시 녹화가 진행 중이면 멈추고 플래그 갱신
+        if (!hasStoppedRecording && count >= 10) {
+            hasStoppedRecording = true
+            recording?.stop()
+            recording = null
+        }
     }
 
     private fun switchCamera() {
@@ -313,9 +356,100 @@ class NativeHeelRaiseView(
         updateLensFacing(newLensFacing)
     }
 
+    private fun startRecording(outputPath: String, result: MethodChannel.Result) {
+        if (recording != null) {
+            result.error("ALREADY_RECORDING", "Recording is already in progress", null)
+            return
+        }
 
+        val videoFile = File(outputPath)
+
+        val fileOutputOptions = FileOutputOptions.Builder(videoFile).build()
+
+        if (videoCapture == null) {
+            val recorder = Recorder.Builder()
+                .setQualitySelector(QualitySelector.from(Quality.HD))
+                .build()
+            videoCapture = VideoCapture.withOutput(recorder)
+
+            // 카메라 바인딩 업데이트
+            val cameraProvider = cameraProviderFuture.get()
+            cameraProvider.unbindAll()
+
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(currentLensFacing)
+                .build()
+
+            val preview = Preview.Builder()
+                .build()
+                .also { it.setSurfaceProvider(previewView.surfaceProvider) }
+
+            val imageAnalysis = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+                .also { it.setAnalyzer(cameraExecutor, this) }
+
+            try {
+                cameraProvider.bindToLifecycle(
+                    activity as LifecycleOwner,
+                    cameraSelector,
+                    preview,
+                    imageAnalysis,
+                    videoCapture
+                )
+            } catch (e: Exception) {
+                Log.e("NativeHeelRaiseView", "카메라 바인딩 실패", e)
+                result.error("CAMERA_ERROR", "Failed to bind camera with video capture: ${e.message}", null)
+                return
+            }
+        }
+
+        recording = videoCapture
+            ?.output
+            ?.prepareRecording(activity, fileOutputOptions)
+            ?.apply { withAudioEnabled() }
+            ?.start(ContextCompat.getMainExecutor(activity)) { event ->
+                when(event) {
+                    is VideoRecordEvent.Start -> {
+                        Log.d("NativeHeelRaiseView", "녹화 시작됨")
+                        result.success(null)
+                    }
+                    is VideoRecordEvent.Finalize -> {
+                        if (event.hasError()) {
+                            Log.e("NativeHeelRaiseView", "녹화 오류: ${event.cause?.message}")
+                            eventSink?.error("VIDEO_ERROR", event.cause?.message, null)
+                        } else {
+                            val uri = event.outputResults.outputUri.toString()
+                            Log.d("NativeHeelRaiseView", "녹화 완료 URI: $uri")
+                            // Flutter에 저장 완료 알림
+                            eventSink?.success(mapOf(
+                                "type" to "video_saved",
+                                "uri"  to uri
+                            ))
+                        }
+                    }
+                }
+            }
+    }
+
+    private fun stopRecording(result: MethodChannel.Result) {
+        val recording = recording
+        if (recording == null) {
+            result.error("NOT_RECORDING", "No recording in progress", null)
+            return
+        }
+
+        recording.stop()
+        this.recording = null
+        result.success(null)
+    }
 
     override fun dispose() {
+        try {
+            recording?.stop()
+        } catch (e: Exception) {
+            Log.e("NativeHeelRaiseView", "녹화 중지 실패", e)
+        }
         cameraExecutor.shutdown()
         eventSink?.endOfStream()
         eventChannel.setStreamHandler(null)

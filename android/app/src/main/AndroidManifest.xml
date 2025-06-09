@@ -9,7 +9,8 @@
 
     <!-- 2) 카메라 권한 (영상 촬영용) -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature android:name="android.hardware.camera.any" android:required="true" />
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.autofocus" />
 
     <!-- 3) 오디오 녹음 권한 (영상 촬영 시 마이크 사용) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -24,6 +25,7 @@
 
     <application
         android:label="capstone_healthcare_app"
+        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true">
         <!-- requestLegacyExternalStorage는 Android 10(Q) 이하에서만 필요-->

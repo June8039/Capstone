@@ -7,6 +7,7 @@ import android.os.Looper
 import android.util.Log
 import android.util.Size
 import android.view.View
+import android.widget.FrameLayout
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -24,6 +25,31 @@ import io.flutter.plugin.platform.PlatformView
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.Executors
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
+
+class GuideBoxOverlay(context: Context) : View(context) {
+    private val paint = Paint().apply {
+        color = Color.GREEN
+        style = Paint.Style.STROKE
+        strokeWidth = 8f
+        isAntiAlias = true
+    }
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val marginX = width * 0.20f
+        val marginY = height * 0.20f
+        val left = marginX
+        val top = marginY
+        val right = width - marginX
+        val bottom = height - marginY
+        canvas.drawRect(RectF(left, top, right, bottom), paint)
+    }
+
+}
 
 class NativeCalibrationView(
     private val activity: FlutterActivity,
@@ -39,8 +65,19 @@ class NativeCalibrationView(
     private lateinit var poseDetector: PoseDetector
     private val calibrationPoses = mutableListOf<Pose>()
     private var calibrationTimer: Timer? = null
+    private val frameLayout = FrameLayout(activity)
     private val previewView = PreviewView(activity).apply {
-        implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        )
+    }
+    private val guideBoxOverlay = GuideBoxOverlay(activity).apply {
+        layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        )
     }
     private var eventSink: EventChannel.EventSink? = null
     private var isProcessing = false
@@ -62,6 +99,9 @@ class NativeCalibrationView(
                 sendError("CAMERA_INIT_FAILED", e.message)
             }
         }, ContextCompat.getMainExecutor(activity))
+
+        frameLayout.addView(previewView)
+        frameLayout.addView(guideBoxOverlay)
 
         // 포즈 감지기 초기화
         val options = PoseDetectorOptions.Builder()
@@ -133,6 +173,30 @@ class NativeCalibrationView(
         }
     }
 
+    override fun getView(): View = frameLayout
+
+    fun isUserInGuideBox(pose: Pose): Boolean {
+        val marginX = previewView.width * 0.08f
+        val marginY = previewView.height * 0.08f
+        val left = marginX
+        val top = marginY
+        val right = previewView.width - marginX
+        val bottom = previewView.height - marginY
+
+        val keyLandmarks = listOf(
+            pose.getPoseLandmark(PoseLandmark.LEFT_SHOULDER),
+            pose.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER),
+            pose.getPoseLandmark(PoseLandmark.LEFT_HIP),
+            pose.getPoseLandmark(PoseLandmark.RIGHT_HIP)
+        )
+        return keyLandmarks.all { lm ->
+            lm != null &&
+                    lm.position.x in left..right &&
+                    lm.position.y in top..bottom
+        }
+    }
+
+
     //카메라 전환
     private fun switchCamera() {
         val newLensFacing = if (currentLensFacing == CameraSelector.LENS_FACING_BACK) {
@@ -187,7 +251,15 @@ class NativeCalibrationView(
     }
 
     private fun handlePose(pose: Pose) {
-        if (isHighConfidencePose(pose)) {
+        val isInBox = isUserInGuideBox(pose)
+        val isConfident = isHighConfidencePose(pose)
+
+        sendEvent(mapOf(
+            "type" to "position_status",
+            "isInBox" to isInBox
+        ))
+
+        if (isConfident && isInBox) {
             calibrationPoses.add(pose)
             val progress = calibrationPoses.size.toDouble() / 100
             val percent = (progress * 100).toInt()
@@ -198,16 +270,34 @@ class NativeCalibrationView(
                 calculateBaseline()
             }
         } else {
-            Log.w("Calibration", "신뢰도 부족 포즈 무시")
+            if (!isConfident && !isInBox) {
+                Log.w("Calibration", "신뢰도 부족 + 박스 밖 포즈 무시")
+            } else if (!isConfident) {
+                Log.w("Calibration", "신뢰도 부족 포즈 무시")
+            } else if (!isInBox) {
+                Log.w("Calibration", "박스 밖 포즈 무시")
+            }
         }
     }
 
     private fun isHighConfidencePose(pose: Pose): Boolean {
-        val minConfidence = 0.6f
-        for (i in 0..32) {
-            val landmark = pose.getPoseLandmark(i)
+        val minConfidence = 0.4f
+        val requiredLandmarks = listOf(
+            PoseLandmark.LEFT_SHOULDER,    // 11
+            PoseLandmark.RIGHT_SHOULDER,   // 12
+            PoseLandmark.LEFT_HIP,         // 23
+            PoseLandmark.RIGHT_HIP,        // 24
+            PoseLandmark.LEFT_KNEE,        // 25
+            PoseLandmark.RIGHT_KNEE,       // 26
+            PoseLandmark.LEFT_ANKLE,       // 27
+            PoseLandmark.RIGHT_ANKLE,      // 28
+            PoseLandmark.LEFT_HEEL,        // 29
+            PoseLandmark.RIGHT_HEEL        // 30
+        )
+        for (type in requiredLandmarks) {
+            val landmark = pose.getPoseLandmark(type)
             if (landmark == null || landmark.inFrameLikelihood < minConfidence) {
-                Log.d("Calibration", "랜드마크 $i 누락 또는 신뢰도 부족: ${landmark?.inFrameLikelihood}")
+                Log.w("Calibration", "랜드마크 $type 신뢰도 부족: ${landmark?.inFrameLikelihood}")
                 return false
             }
         }
@@ -255,6 +345,13 @@ class NativeCalibrationView(
                 if (typeInt == PoseLandmark.RIGHT_HEEL) {
                     baselineValues["right_heel_y"] = medianY
                 }
+                // 눈 Y값 별도 저장
+                if (typeInt == PoseLandmark.LEFT_EYE) {
+                    baselineValues["left_eye_y"] = medianY
+                }
+                if (typeInt == PoseLandmark.RIGHT_EYE) {
+                    baselineValues["right_eye_y"] = medianY
+                }
             }
 
         Handler(Looper.getMainLooper()).post {
@@ -290,8 +387,6 @@ class NativeCalibrationView(
             Log.e("Calibration", "에러 전송 실패", e)
         }
     }
-
-    override fun getView(): View = previewView
 
     override fun dispose() {
         Log.d("Calibration", "리소스 해제 시작")

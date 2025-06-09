@@ -231,12 +231,6 @@ class _SquatScreenState extends State<SquatScreen> {
                           ),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.cameraswitch,
-                            color: Colors.white, size: 28),
-                        onPressed: _flipCamera,
-                        tooltip: '카메라 전환',
-                      ),
                     ],
                   ),
                 ),

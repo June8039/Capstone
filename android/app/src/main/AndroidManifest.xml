@@ -1,26 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.capstone_healthcare_app">
 
-    <!-- 카메라 권한  -->
+    <!-- ────────────────────────────────────────────────────────────────────────── -->
+    <!-- 1) 인터넷 권한 (Firebase 업로드/다운로드를 위해 반드시 필요) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 2) 카메라 권한 (영상 촬영용) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.any" android:required="true" />
 
+    <!-- 3) 오디오 녹음 권한 (영상 촬영 시 마이크 사용) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- 4) Android 10(Q) 이하 디바이스용 외부 저장소 권한 (필요 시만 적용) -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- ────────────────────────────────────────────────────────────────────────── -->
+
+
     <application
         android:label="capstone_healthcare_app"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="true">
+        <!-- requestLegacyExternalStorage는 Android 10(Q) 이하에서만 필요-->
+
+        <!-- FlutterActivity 혹은 MainActivity 설정(통상 Flutter 템플릿 기준) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/LaunchTheme">
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+
+            <!-- Flutter Embedding용 테마 메타데이터 -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
+
+            <!-- 앱 런처(홈 스크린에 아이콘 표시) -->
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Flutter 2 이상에서 필요 -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

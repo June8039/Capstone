@@ -3,25 +3,23 @@
 //import all the needed packages and files here
 //I gotta find a way to organize the imports better and remove redundancy
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:intl/date_symbol_data_local.dart';
-import 'screens/home_screen.dart';
-import 'screens/exercise_screen.dart';
-import 'screens/calendar_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'screens/login_screen.dart';
+import 'screens/exercise_screen.dart';
+import 'screens/calendar_screen.dart';
 
 void main() async {
-  // Initialize locale data
-  await initializeDateFormatting();
-  // Run the app
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase 초기화 실패: $e');
+    // Firebase 초기화 실패 시에도 앱은 실행되도록 합니다.
+  }
   runApp(const MyApp());
-
-  // Firebase Core 초기화
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
 }
 
 class MyApp extends StatelessWidget {
@@ -30,15 +28,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Screen Navigation Demo',
+      title: '운동 도우미',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MainScreen(), //main homescreen
+      home: const LoginScreen(),
     );
   }
 }
-
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -51,9 +48,9 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    //all pages should be defined here
     const ExerciseScreen(),
-    const CalendarScreen(), // Create this or any other screen
+    const CalendarScreen(),
+    const Center(child: Text('나의 기록')), // 임시 화면
   ];
 
   void _onItemTapped(int index) {
@@ -61,7 +58,6 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = index;
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -72,11 +68,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.self_improvement),
@@ -87,10 +79,9 @@ class _MainScreenState extends State<MainScreen> {
             label: '캘린더',
           ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.insert_chart),
-              label: '나의 기록'
+            icon: Icon(Icons.insert_chart),
+            label: '나의 기록',
           ),
-
         ],
       ),
     );

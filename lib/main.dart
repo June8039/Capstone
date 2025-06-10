@@ -11,16 +11,24 @@ import 'screens/calendar_screen.dart';
 import 'screens/personal_record.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:provider/provider.dart';
+import 'providers/mood_provider.dart';
 
 void main() async {
   // Initialize locale data
   await initializeDateFormatting();
-  // Run the app
-  runApp(const MyApp());
 
   // Firebase Core 초기화
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Run the app
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => MoodProvider(),
+      child: const MyApp(),
+    ),
   );
 }
 

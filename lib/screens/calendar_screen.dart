@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
+import '../providers/mood_provider.dart';
 
 // Event class to store event details
 class Event {
@@ -29,6 +31,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _selectedDay = DateTime.now();
   DateTime _focusedDay = DateTime.now();
   Map<DateTime, List<Event>> events = {};
+
+  Color _getMoodColor(double? score) {
+    if (score == null) return Colors.transparent;
+    if (score <= 3) return Colors.red.withOpacity(0.3);
+    if (score <= 6) return Colors.yellow.withOpacity(0.3);
+    return Colors.green.withOpacity(0.3);
+  }
 
   List<Event> _getEventsForDay(DateTime day) {
     return events[DateTime(day.year, day.month, day.day)] ?? [];
@@ -130,80 +139,140 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: AppBar(
         title: const Text('Calendar Screen'),
       ),
-      body: Column(
-        children: [
-          TableCalendar(
-            locale: "ko_KR",
-            focusedDay: _focusedDay,
-            firstDay: DateTime(2020),
-            lastDay: DateTime(2030),
-            headerStyle: const HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
-            ),
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay ?? _focusedDay;
-              });
-            },
-            eventLoader: _getEventsForDay,
-          ),
-
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _getEventsForDay(_selectedDay).length,
-              itemBuilder: (context, index) {
-                final event = _getEventsForDay(_selectedDay)[index];
-                return Card(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  child: InkWell(
-                    onTap: () => _toggleEventCompletion(_selectedDay, index),
-                    child: ListTile(
-                      leading: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Checkbox(
-                            value: event.isCompleted,
-                            onChanged: (_) =>
-                                _toggleEventCompletion(_selectedDay, index),
-                          ),
-                          Icon(
-                            event.category == 'exercise'
-                                ? Icons.fitness_center
-                                : Icons.medication,
-                            color: event.category == 'exercise'
-                                ? const Color(0xFF3DDAA8)
-                                : const Color(0xFF7F46E3),
-                          ),
-                        ],
+      body: Consumer<MoodProvider>(
+        builder: (context, moodProvider, child) {
+          return Column(
+            children: [
+              TableCalendar(
+                locale: "ko_KR",
+                focusedDay: _focusedDay,
+                firstDay: DateTime(2020),
+                lastDay: DateTime(2030),
+                headerStyle: const HeaderStyle(
+                  formatButtonVisible: false,
+                  titleCentered: true,
+                ),
+                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay ?? _focusedDay;
+                  });
+                },
+                eventLoader: _getEventsForDay,
+                calendarBuilders: CalendarBuilders(
+                  defaultBuilder: (context, day, focusedDay) {
+                    final moodScore = moodProvider.getMoodScore(day);
+                    return Container(
+                      margin: const EdgeInsets.all(4.0),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _getMoodColor(moodScore),
+                        shape: BoxShape.circle,
                       ),
-                      title: Text(
-                        event.title,
-                        style: TextStyle(
-                          decoration: event.isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
+                      child: Text(
+                        '${day.day}',
+                        style: const TextStyle(fontSize: 16.0),
+                      ),
+                    );
+                  },
+                  selectedBuilder: (context, day, focusedDay) {
+                    final moodScore = moodProvider.getMoodScore(day);
+                    return Container(
+                      margin: const EdgeInsets.all(4.0),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _getMoodColor(moodScore),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.blue, width: 2),
+                      ),
+                      child: Text(
+                        '${day.day}',
+                        style: const TextStyle(fontSize: 16.0),
+                      ),
+                    );
+                  },
+                  todayBuilder: (context, day, focusedDay) {
+                    final moodScore = moodProvider.getMoodScore(day);
+                    return Container(
+                      margin: const EdgeInsets.all(4.0),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _getMoodColor(moodScore),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.blue.withOpacity(0.5),
+                          width: 1,
                         ),
                       ),
-                      subtitle: Text(
-                        event.description,
-                        style: TextStyle(
-                          decoration: event.isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
+                      child: Text(
+                        '${day.day}',
+                        style: const TextStyle(fontSize: 16.0),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _getEventsForDay(_selectedDay).length,
+                  itemBuilder: (context, index) {
+                    final event = _getEventsForDay(_selectedDay)[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      child: InkWell(
+                        onTap: () =>
+                            _toggleEventCompletion(_selectedDay, index),
+                        child: ListTile(
+                          leading: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: event.isCompleted,
+                                onChanged: (_) => _toggleEventCompletion(
+                                  _selectedDay,
+                                  index,
+                                ),
+                              ),
+                              Icon(
+                                event.category == 'exercise'
+                                    ? Icons.fitness_center
+                                    : Icons.medication,
+                                color: event.category == 'exercise'
+                                    ? const Color(0xFF3DDAA8)
+                                    : const Color(0xFF7F46E3),
+                              ),
+                            ],
+                          ),
+                          title: Text(
+                            event.title,
+                            style: TextStyle(
+                              decoration: event.isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          subtitle: Text(
+                            event.description,
+                            style: TextStyle(
+                              decoration: event.isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddEventDialog,

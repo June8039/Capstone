@@ -32,7 +32,6 @@ class ExerciseScreen extends StatelessWidget {
     }
   }
 
-
   void _startSquatFlow(BuildContext context) {
     Navigator.push(
       context,
@@ -46,60 +45,64 @@ class ExerciseScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Exercises")),
-      body: Center(
-        child: Container(
-          width: 300,
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment:CrossAxisAlignment.start,
-            children: [
-              const Text('운동계획', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              // 운동 1 (클릭 시 CalibrationScreen으로 이동)
-
-              GestureDetector(
-                onTap: () => _startHeelRaiseFlow(context),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: const Text(
-                    '운동 1 (발 뒤꿈치 들기)',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      decoration: TextDecoration.underline,
+      body: SingleChildScrollView(
+        child: Center(
+          child: Container(
+            width: 300,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('운동계획',
+                    style:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                // 운동 1 (클릭 시 CalibrationScreen으로 이동)
+                GestureDetector(
+                  onTap: () => _startHeelRaiseFlow(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: const Text(
+                      '운동 1 (발 뒤꿈치 들기)',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              IconButton(
+                IconButton(
                   icon: Image.asset('assets/Images/calf_raise.png'),
                   iconSize: 50,
                   onPressed: () => _startHeelRaiseFlow(context),
-              ),
-              const SizedBox(height: 16),
-              // 운동 2 (스쿼트)
-              GestureDetector(
-                onTap: () => _startSquatFlow(context),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: const Text(
-                    '운동 2 (스쿼트)',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      decoration: TextDecoration.underline,
+                ),
+                const SizedBox(height: 16),
+                // 운동 2 (스쿼트)
+                GestureDetector(
+                  onTap: () => _startSquatFlow(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: const Text(
+                      '운동 2 (스쿼트)',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              IconButton(
+                IconButton(
                   icon: Image.asset('assets/Images/squat.png'),
                   iconSize: 50,
-                  onPressed: () => _startHeelRaiseFlow(context),
-              ),
-            ],
+                  onPressed: () => _startSquatFlow(context),
+                ),
+              ],
+            ),
           ),
         ),
       ),

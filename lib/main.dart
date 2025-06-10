@@ -16,6 +16,7 @@ import 'screens/login_screen.dart';
 import 'package:provider/provider.dart';
 import 'providers/mood_provider.dart';
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   // Initialize locale data
   await initializeDateFormatting();
 

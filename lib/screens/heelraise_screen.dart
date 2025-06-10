@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:video_player/video_player.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path_provider/path_provider.dart';
-import '../services/exercise_video_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class HeelRaiseScreen extends StatefulWidget {
   final Map<String, dynamic> baselineValues;
@@ -23,14 +22,13 @@ class HeelRaiseScreen extends StatefulWidget {
 
 class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
   static const _methodChannel =
-      MethodChannel('com.example.capstone_healthcare_app/heel_raise');
+  MethodChannel('com.example.capstone_healthcare_app/heel_raise');
   static const _eventChannel =
-      EventChannel('com.example.capstone_healthcare_app/heel_raise_events');
+  EventChannel('com.example.capstone_healthcare_app/heel_raise_events');
 
   int _count = 0;
   bool _isCompleted = false;
   StreamSubscription? _eventSubscription;
-  final _exerciseVideoService = ExerciseVideoService();
 
   FlutterTts _flutterTts = FlutterTts();
   bool _isSpeaking = false;
@@ -150,81 +148,57 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       _recordedVideoFile = File('${tempDir.path}/exercise_$timestamp.mp4');
       
-      debugPrint('녹화 파일 경로: ${_recordedVideoFile!.path}');
-      
       await _methodChannel.invokeMethod('startRecording', {
         'outputPath': _recordedVideoFile!.path
       });
-      
-      debugPrint('녹화 시작 성공');
     } catch (e) {
-      debugPrint('녹화 시작 오류: $e');
+      print('녹화 시작 오류: $e');
     }
   }
 
   Future<void> _stopRecording() async {
     try {
       await _methodChannel.invokeMethod('stopRecording');
-      
-      if (_recordedVideoFile != null) {
-        final exists = await _recordedVideoFile!.exists();
-        final fileSize = exists ? await _recordedVideoFile!.length() : 0;
-        debugPrint('녹화 중지 - 파일 존재: $exists, 크기: $fileSize bytes');
-      } else {
-        debugPrint('녹화 중지 - 파일이 null입니다');
-      }
     } catch (e) {
-      debugPrint('녹화 중지 오류: $e');
+      print('녹화 중지 오류: $e');
     }
   }
 
   Future<void> _uploadVideo() async {
-    if (_recordedVideoFile == null) {
-      debugPrint('업로드 실패: 녹화 파일이 null입니다');
-      return;
-    }
-
-    final exists = await _recordedVideoFile!.exists();
-    if (!exists) {
-      debugPrint('업로드 실패: 녹화 파일이 존재하지 않습니다');
-      return;
-    }
+    if (_recordedVideoFile == null) return;
 
     setState(() => _isUploading = true);
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('User not logged in');
-      }
-
-      debugPrint('업로드 시작 - 파일 크기: ${await _recordedVideoFile!.length()} bytes');
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('videos/heel_raise_$timestamp.mp4');
       
-      await _exerciseVideoService.uploadExerciseVideo(
-        videoFile: _recordedVideoFile!,
-        exerciseType: 'heel_raise',
-        count: _count,
-        userId: user.uid,
-      );
+      final uploadTask = storageRef.putFile(_recordedVideoFile!);
+      
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        print('업로드 진행률: $progress%');
+      });
 
-      debugPrint('업로드 완료');
+      await uploadTask.whenComplete(() => null);
+      final downloadUrl = await storageRef.getDownloadURL();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('운동 영상이 저장되었습니다.')),
       );
     } catch (e) {
-      debugPrint('업로드 오류: $e');
+      print('업로드 오류: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('영상 저장 중 오류가 발생했습니다.')),
       );
     } finally {
       setState(() => _isUploading = false);
       try {
-        if (_recordedVideoFile != null && await _recordedVideoFile!.exists()) {
-          await _recordedVideoFile!.delete();
-          debugPrint('임시 파일 삭제 완료');
-        }
+        await _recordedVideoFile!.delete();
       } catch (e) {
-        debugPrint('임시 파일 삭제 오류: $e');
+        print('임시 파일 삭제 오류: $e');
       }
     }
   }
@@ -261,30 +235,53 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        if (_isUploading) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('영상 업로드 중입니다. 잠시만 기다려주세요.')),
-          );
-          return false;
-        }
-        return true;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('발 뒤꿈치 들기'),
-          leading: _isUploading
-              ? null
-              : IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-        ),
-        body: Stack(
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
           children: [
             Column(
               children: [
+                Stack(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      color: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      child: const Center(
+                        child: Text(
+                          '발 뒤꿈치 들기',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                        tooltip: '나가기',
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+                  child: Text(
+                    '경과 시간: $_elapsedTime',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: Column(
                     children: [
@@ -295,8 +292,7 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                               viewType: 'NativeHeelRaiseView',
                               creationParams: {
                                 'baselineValues': widget.baselineValues,
-                                'initialLensFacing':
-                                    widget.initialLensFacing.toInt(),
+                                'initialLensFacing': widget.initialLensFacing.toInt(),
                               },
                               creationParamsCodec: StandardMessageCodec(),
                               onPlatformViewCreated: (viewId) {
@@ -317,12 +313,10 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                         child: FutureBuilder(
                           future: _initializeVideoPlayerFuture,
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.done) {
+                            if (snapshot.connectionState == ConnectionState.done) {
                               return VideoPlayer(_videoController);
                             } else {
-                              return const Center(
-                                  child: CircularProgressIndicator());
+                              return const Center(child: CircularProgressIndicator());
                             }
                           },
                         ),
@@ -330,39 +324,56 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                     ],
                   ),
                 ),
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '횟수: $_count',
-                          style: Theme.of(context).textTheme.headlineSmall,
+                Container(
+                  color: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            '횟수 : $_count회',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                        Text(
-                          _elapsedTime,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                      ],
-                    ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cameraswitch,
+                            color: Colors.white, size: 28),
+                        onPressed: _flipCamera,
+                        tooltip: '카메라 전환',
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            if (_isUploading)
+            if (_isCompleted)
               Container(
-                color: Colors.black54,
-                child: const Center(
+                color: Colors.black.withOpacity(0.7),
+                child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text(
-                        '영상 저장 중...',
-                        style: TextStyle(color: Colors.white),
+                      const Text(
+                        '운동 완료!',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold),
                       ),
+                      const SizedBox(height: 20),
+                      if (_isUploading)
+                        const CircularProgressIndicator()
+                      else
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('닫기'),
+                        ),
                     ],
                   ),
                 ),

@@ -64,7 +64,7 @@ class ExerciseScreen extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: const Text(
-                      '운동 1 (발 뒤꿈치 들기)',
+                      '발 뒤꿈치 들기',
                       style: TextStyle(
                         color: Colors.blue,
                         fontWeight: FontWeight.bold,
@@ -86,7 +86,7 @@ class ExerciseScreen extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: const Text(
-                      '운동 2 (스쿼트)',
+                      '스쿼트',
                       style: TextStyle(
                         color: Colors.blue,
                         fontWeight: FontWeight.bold,

@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'screens/home_screen.dart';
 import 'screens/exercise_screen.dart';
 import 'screens/calendar_screen.dart';
+import 'screens/personal_record.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
@@ -21,7 +22,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
 }
 
 class MyApp extends StatelessWidget {
@@ -39,7 +39,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -54,6 +53,7 @@ class _MainScreenState extends State<MainScreen> {
     //all pages should be defined here
     const CalendarScreen(),
     const ExerciseScreen(), // Create this or any other screen
+    const PersonalRecordScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -61,7 +61,6 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = index;
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -79,17 +78,13 @@ class _MainScreenState extends State<MainScreen> {
         },
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month),
-              label: '캘린더'
-          ),
+              icon: Icon(Icons.calendar_month), label: '캘린더'),
           BottomNavigationBarItem(
             icon: Icon(Icons.self_improvement),
             label: '운동',
           ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.insert_chart),
-              label: '나의 기록'
-          )
+              icon: Icon(Icons.insert_chart), label: '나의 기록')
         ],
       ),
     );

@@ -88,10 +88,10 @@ class _PersonalRecordScreenState extends State<PersonalRecordScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
-              Text('0-2: 약한 통증'),
-              Text('3-5: 중간 통증'),
-              Text('6-8: 심한 통증'),
-              Text('9-10: 매우 심한 통증'),
+              const Text('0-2: 약한 통증'),
+              const Text('3-5: 중간 통증'),
+              const Text('6-8: 심한 통증'),
+              const Text('9-10: 매우 심한 통증'),
               const SizedBox(height: 40),
               const Text(
                 '오늘의 기분 점수',
@@ -138,19 +138,19 @@ class _PersonalRecordScreenState extends State<PersonalRecordScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
-              Row(
+              const Row(
                 children: const [
                   Text('0-3: 기분 나쁨 '),
                   Text('😞', style: TextStyle(fontSize: 20)),
                 ],
               ),
-              Row(
+              const Row(
                 children: const [
                   Text('4-6: 기분 보통 '),
                   Text('😐', style: TextStyle(fontSize: 20)),
                 ],
               ),
-              Row(
+              const Row(
                 children: const [
                   Text('7-10: 기분 좋음 '),
                   Text('😊', style: TextStyle(fontSize: 20)),

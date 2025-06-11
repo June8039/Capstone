@@ -11,10 +11,12 @@ import 'screens/calendar_screen.dart';
 import 'screens/personal_record.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'screens/login_screen.dart';
+
 import 'package:provider/provider.dart';
 import 'providers/mood_provider.dart';
-
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   // Initialize locale data
   await initializeDateFormatting();
 
@@ -42,7 +44,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MainScreen(), //main homescreen
+      home: const LoginScreen(),
     );
   }
 }
@@ -86,13 +88,16 @@ class _MainScreenState extends State<MainScreen> {
         },
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month), label: '캘린더'),
+              icon: Icon(Icons.calendar_month),
+              label: '캘린더'),
           BottomNavigationBarItem(
             icon: Icon(Icons.self_improvement),
             label: '운동',
           ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.insert_chart), label: '나의 기록')
+            icon: Icon(Icons.insert_chart),
+            label: '나의 기록',
+          ),
         ],
       ),
     );

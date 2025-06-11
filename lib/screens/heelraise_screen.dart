@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:video_player/video_player.dart';
-
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path_provider/path_provider.dart';
 
 class HeelRaiseScreen extends StatefulWidget {
   final Map<String, dynamic> baselineValues;
@@ -39,24 +41,28 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
   late Timer _timer;
   String _elapsedTime = "00:00";
 
+  File? _recordedVideoFile;
+  bool _isUploading = false;
+
   @override
   void initState() {
     super.initState();
     debugPrint("HeelRaiseScreen initialLensFacing: ${widget.initialLensFacing}");
     _initTts();
+    _startRecording();
+    _subscribeEventChannel();
 
     _videoController = VideoPlayerController.asset(
       'assets/videos/heel_raise_example.mp4',
     );
     _initializeVideoPlayerFuture = _videoController.initialize().then((_) {
       setState(() {});
-      _videoController.setLooping(true); // 반복 재생
+      _videoController.setLooping(true);
       _videoController.setVolume(0.0);
-      _videoController.play();           // 자동 재생
+      _videoController.play();
     });
 
     _stopwatch = Stopwatch();
-    // 타이머 시작
     _startTimer();
   }
 
@@ -140,6 +146,67 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
     _methodChannel.invokeMethod('initialize', convertedValues);
   }
 
+  Future<void> _startRecording() async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      _recordedVideoFile = File('${tempDir.path}/exercise_$timestamp.mp4');
+      
+      await _methodChannel.invokeMethod('startRecording', {
+        'outputPath': _recordedVideoFile!.path
+      });
+    } catch (e) {
+      print('녹화 시작 오류: $e');
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    try {
+      await _methodChannel.invokeMethod('stopRecording');
+    } catch (e) {
+      print('녹화 중지 오류: $e');
+    }
+  }
+
+  Future<void> _uploadVideo() async {
+    if (_recordedVideoFile == null) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('videos/heel_raise_$timestamp.mp4');
+      
+      final uploadTask = storageRef.putFile(_recordedVideoFile!);
+      
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        print('업로드 진행률: $progress%');
+      });
+
+      await uploadTask.whenComplete(() => null);
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('운동 영상이 저장되었습니다.')),
+      );
+    } catch (e) {
+      print('업로드 오류: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('영상 저장 중 오류가 발생했습니다.')),
+      );
+    } finally {
+      setState(() => _isUploading = false);
+      try {
+        await _recordedVideoFile!.delete();
+      } catch (e) {
+        print('임시 파일 삭제 오류: $e');
+      }
+    }
+  }
+
   void _subscribeEventChannel() {
     _eventSubscription = _eventChannel.receiveBroadcastStream().listen((event) {
       if (event is Map) {
@@ -152,7 +219,8 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
           if (event['status'] == 'completed') {
             setState(() => _isCompleted = true);
             _stopTimer();
-            _videoController.pause(); // 운동 완료 시 영상 멈춤
+            _videoController.pause();
+            _stopRecording().then((_) => _uploadVideo());
           }
         }
       }
@@ -169,7 +237,6 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
     await _flutterTts.speak("$count회");
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -179,7 +246,6 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
           children: [
             Column(
               children: [
-                // 상단 제목과 나가기 버튼
                 Stack(
                   children: [
                     Container(
@@ -209,7 +275,6 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                     ),
                   ],
                 ),
-                // 타이머 표시
                 Padding(
                   padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
                   child: Text(
@@ -300,10 +365,13 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
                             fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('닫기'),
-                      ),
+                      if (_isUploading)
+                        const CircularProgressIndicator()
+                      else
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('닫기'),
+                        ),
                     ],
                   ),
                 ),

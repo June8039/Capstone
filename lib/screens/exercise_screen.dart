@@ -56,7 +56,7 @@ class ExerciseScreen extends StatelessWidget {
               children: [
                 const Text('운동계획',
                     style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 // 운동 1 (클릭 시 CalibrationScreen으로 이동)
                 GestureDetector(

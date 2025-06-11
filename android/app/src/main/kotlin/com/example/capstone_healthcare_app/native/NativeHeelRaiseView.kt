@@ -98,11 +98,15 @@ class NativeHeelRaiseView(
         val baselineValues = creationParams?.get("baselineValues") as? Map<*, *>
         val baselineLeftHeelY = baselineValues?.get("left_heel_y") as? Float ?: 0f
         val baselineRightHeelY = baselineValues?.get("right_heel_y") as? Float ?: 0f
+        val baselineLeftEyeY = (baselineValues?.get("left_eye_y") as? Number)?.toFloat() ?: 0f
+        val baselineRightEyeY = (baselineValues?.get("right_eye_y") as? Number)?.toFloat() ?: 0f
 
         heelRaiseCounter = HeelRaiseCounter(
             maxCount = 10,
             baselineLeftHeelY = baselineLeftHeelY,
             baselineRightHeelY = baselineRightHeelY,
+            baselineLeftEyeY = baselineLeftEyeY,
+            baselineRightEyeY = baselineRightEyeY,
         )
 
         // 채널 설정
@@ -141,6 +145,8 @@ class NativeHeelRaiseView(
                         val baselineValues = call.arguments as Map<String, Any>
                         val leftHeelY = (baselineValues["left_heel_y"] as Number).toFloat()
                         val rightHeelY = (baselineValues["right_heel_y"] as Number).toFloat()
+                        val leftEyeY = (baselineValues["left_eye_y"] as? Number)?.toFloat() ?: 0f
+                        val rightEyeY = (baselineValues["right_eye_y"] as? Number)?.toFloat() ?: 0f
 
                         Log.d("NativeHeelRaiseView", "기준값 수신: left=$leftHeelY, right=$rightHeelY")
 
@@ -148,6 +154,8 @@ class NativeHeelRaiseView(
                             maxCount = 10,
                             baselineLeftHeelY = leftHeelY,
                             baselineRightHeelY = rightHeelY,
+                            baselineLeftEyeY = leftEyeY,
+                            baselineRightEyeY = rightEyeY,
                         )
                         result.success(null)
                     } catch (e: Exception) {

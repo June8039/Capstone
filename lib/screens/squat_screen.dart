@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:video_player/video_player.dart';
 
 class SquatScreen extends StatefulWidget {
   const SquatScreen({super.key});
@@ -24,6 +25,9 @@ class _SquatScreenState extends State<SquatScreen> {
   bool _isSpeaking = false;
   int? _pendingCount;
 
+  late VideoPlayerController _videoController;
+  late Future<void> _initializeVideoPlayerFuture;
+
   late Stopwatch _stopwatch;
   late Timer _timer;
   String _elapsedTime = "00:00";
@@ -33,6 +37,17 @@ class _SquatScreenState extends State<SquatScreen> {
     super.initState();
     _initTts();
     _subscribeEventChannel();
+
+    _videoController = VideoPlayerController.asset(
+      'assets/videos/squat_example.mp4',
+    );
+    _initializeVideoPlayerFuture = _videoController.initialize().then((_) {
+      setState(() {});
+      _videoController.setLooping(true); // 반복 재생
+      _videoController.setVolume(0.0);
+      _videoController.play();           // 자동 재생
+    });
+
     _stopwatch = Stopwatch();
     // 타이머 시작
     _startTimer();
@@ -94,6 +109,8 @@ class _SquatScreenState extends State<SquatScreen> {
             setState(() => _count = newCount);
             if (event['status'] == 'completed') {
               setState(() => _isCompleted = true);
+              _stopTimer();
+              _videoController.pause(); // 운동 완료 시 영상 멈춤
             }
           }
         }
@@ -126,6 +143,7 @@ class _SquatScreenState extends State<SquatScreen> {
     _methodChannel.invokeMethod('cancel');
     _eventSubscription?.cancel();
     _flutterTts.stop();
+    _videoController.dispose();
     super.dispose();
   }
 
@@ -204,11 +222,15 @@ class _SquatScreenState extends State<SquatScreen> {
                       ),
                       AspectRatio(
                         aspectRatio: 4 / 3,
-                        child: Container(
-                          color: Colors.black,
-                          child: const Center(
-                            child: Text('스쿼트 예시 영상', style: TextStyle(color: Colors.white54)),
-                          ),
+                        child: FutureBuilder(
+                          future: _initializeVideoPlayerFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.done) {
+                              return VideoPlayer(_videoController);
+                            } else {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+                          },
                         ),
                       ),
                     ],
@@ -230,12 +252,6 @@ class _SquatScreenState extends State<SquatScreen> {
                             ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.cameraswitch,
-                            color: Colors.white, size: 28),
-                        onPressed: _flipCamera,
-                        tooltip: '카메라 전환',
                       ),
                     ],
                   ),

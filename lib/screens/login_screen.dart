@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'exercise_screen.dart';
+import '../main.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _navigateToMain() {
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const ExerciseScreen()),
+      MaterialPageRoute(builder: (_) => const MainScreen()),
     );
   }
 
@@ -162,4 +162,4 @@ class _LoginScreenState extends State<LoginScreen> {
     _pwController.dispose();
     super.dispose();
   }
-} 
+}

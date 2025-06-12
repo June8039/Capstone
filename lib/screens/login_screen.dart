@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../main.dart';
+import 'exercise_screen.dart';
 import 'register_screen.dart';
+import '../main.dart';
+
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,7 +15,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _idController = TextEditingController();
+  final _emailController = TextEditingController();
   final _pwController = TextEditingController();
   bool _isLoading = false;
 
@@ -23,14 +26,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _checkAutoLogin() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
-      if (userId != null && mounted) {
-        _navigateToMain();
-      }
-    } catch (e) {
-      debugPrint('자동 로그인 확인 중 오류: $e');
+    // Firebase Auth 세션이 남아있으면 자동 로그인
+    if (FirebaseAuth.instance.currentUser != null && mounted) {
+      _navigateToMain();
     }
   }
 
@@ -42,10 +40,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    if (_idController.text.isEmpty || _pwController.text.isEmpty) {
+    if (_emailController.text.isEmpty || _pwController.text.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('아이디와 비밀번호를 입력하세요')),
+        const SnackBar(content: Text('이메일과 비밀번호를 입력하세요')),
       );
       return;
     }
@@ -53,43 +51,26 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_idController.text)
-          .get();
-
-      if (!mounted) return;
-
-      if (!userDoc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('존재하지 않는 사용자입니다')),
-        );
-        return;
-      }
-
-      final userData = userDoc.data()!;
-      if (userData['pwd'] != _pwController.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('비밀번호가 일치하지 않습니다')),
-        );
-        return;
-      }
-
-      // 로그인 성공
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userId', _idController.text);
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _pwController.text,
+      );
       if (!mounted) return;
       _navigateToMain();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('로그인 중 오류가 발생했습니다: $e')),
-      );
-      debugPrint('로그인 오류: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+    } on FirebaseAuthException catch (e) {
+      String message = '로그인 실패';
+      if (e.code == 'user-not-found') {
+        message = '존재하지 않는 사용자입니다';
+      } else if (e.code == 'wrong-password') {
+        message = '비밀번호가 일치하지 않습니다';
       }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류 발생: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -111,11 +92,12 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 32),
               TextField(
-                controller: _idController,
+                controller: _emailController,
                 decoration: const InputDecoration(
-                  labelText: '아이디',
+                  labelText: '이메일',
                   border: OutlineInputBorder(),
                 ),
+                keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
               TextField(
@@ -158,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _idController.dispose();
+    _emailController.dispose();
     _pwController.dispose();
     super.dispose();
   }

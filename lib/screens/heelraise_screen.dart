@@ -272,9 +272,7 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
             setState(() => _isCompleted = true);
             _stopTimer();
             _videoController.pause();
-            _stopRecording().then((_) {
-              _uploadVideo();
-            });
+            _stopRecording();
           }
         }
         // 3. 녹화 완료 시 파일 처리

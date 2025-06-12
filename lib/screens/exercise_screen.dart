@@ -54,6 +54,7 @@ class ExerciseScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+
                 // 운동 1 (클릭 시 CalibrationScreen으로 이동)
                 GestureDetector(
                   onTap: () => _startHeelRaiseFlow(context),

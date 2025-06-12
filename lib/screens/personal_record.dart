@@ -156,6 +156,14 @@ class _PersonalRecordScreenState extends State<PersonalRecordScreen> {
                   Text('😊', style: TextStyle(fontSize: 20)),
                 ],
               ),
+              const SizedBox(height: 50),
+              ElevatedButton.icon(
+                onPressed: () {
+                  /* Respond to button press: go to a new screen that displays records*/
+                },
+                icon: Icon(Icons.video_collection_rounded, size: 50),
+                label: Text("운동 영상 보러가기"),
+            )
             ],
           ),
         ),

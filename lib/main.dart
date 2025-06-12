@@ -18,6 +18,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:capstone_healthcare_app/screens/login_screen.dart';
 import 'package:capstone_healthcare_app/screens/heelraise_screen.dart';
 
+import 'package:provider/provider.dart';
+import 'providers/mood_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize locale data
@@ -32,7 +34,7 @@ void main() async {
   runApp(
     ChangeNotifierProvider(
       create: (context) => MoodProvider(),
-      child: MyApp(),
+      child: const MyApp(),
     ),
   );
 }
@@ -41,19 +43,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'healthcare_app',
-      routes: {
-        '/login': (_) => LoginScreen(),
-        '/exercises': (_) => HeelRaiseScreen(baselineValues: <String, dynamic>{}),
-      },
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (ctx, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return Scaffold(body: Center(child: CircularProgressIndicator()));
-          }
-          return snap.hasData ? HeelRaiseScreen(baselineValues: <String, dynamic>{}) : LoginScreen();
-        },
+
+      title: 'Screen Navigation Demo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+
       ),
     );
   }

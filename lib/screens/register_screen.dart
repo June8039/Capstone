@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'exercise_screen.dart';
+import '../main.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -74,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // 메인 화면으로 이동
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const ExerciseScreen()),
+          MaterialPageRoute(builder: (_) => const MainScreen()),
           (route) => false,
         );
       }
@@ -185,4 +185,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     super.dispose();
   }
-} 
+}

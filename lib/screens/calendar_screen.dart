@@ -143,7 +143,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Calendar Screen'),
+        title: const Text('캘린더'),
       ),
       body: Consumer<MoodProvider>(
         builder: (context, moodProvider, child) {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'exercise_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -11,14 +11,14 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _idController = TextEditingController();
+  final _emailController = TextEditingController();
   final _pwController = TextEditingController();
   final _pw2Controller = TextEditingController();
   final _nameController = TextEditingController();
   bool _isLoading = false;
 
   Future<void> _register() async {
-    if (_idController.text.isEmpty ||
+    if (_emailController.text.isEmpty ||
         _pwController.text.isEmpty ||
         _pw2Controller.text.isEmpty ||
         _nameController.text.isEmpty) {
@@ -38,56 +38,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_idController.text)
-          .get();
+      // Firebase Auth로 회원가입
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _pwController.text,
+      );
 
-      if (userDoc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('이미 존재하는 사용자 ID입니다')),
-        );
-        return;
-      }
-
-      // 새 사용자 등록
+      // Firestore에 추가 정보 저장 (선택)
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(_idController.text)
+          .doc(credential.user!.uid)
           .set({
-        'userId': _idController.text,
-        'pwd': _pwController.text,
+        'userId': credential.user!.uid,
+        'email': _emailController.text.trim(),
         'userName': _nameController.text,
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // 자동 로그인 처리
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userId', _idController.text);
-
-      // 회원가입 성공 메시지
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('회원가입이 완료되었습니다')),
         );
-      }
-
-      // 메인 화면으로 이동
-      if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const ExerciseScreen()),
-          (route) => false,
+              (route) => false,
         );
       }
+    } on FirebaseAuthException catch (e) {
+      String message = '회원가입 실패';
+      if (e.code == 'email-already-in-use') {
+        message = '이미 가입된 이메일입니다';
+      } else if (e.code == 'invalid-email') {
+        message = '유효하지 않은 이메일 형식입니다';
+      } else if (e.code == 'weak-password') {
+        message = '비밀번호는 6자 이상이어야 합니다';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('회원가입 중 오류가 발생했습니다: $e')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류 발생: $e')),
+      );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -111,12 +103,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               SizedBox(
                 height: fieldHeight,
                 child: TextField(
-                  controller: _idController,
+                  controller: _emailController,
                   decoration: const InputDecoration(
-                    labelText: '아이디',
+                    labelText: '이메일',
                     border: OutlineInputBorder(),
                   ),
                   style: TextStyle(fontSize: textSize),
+                  keyboardType: TextInputType.emailAddress,
                 ),
               ),
               const SizedBox(height: 16),
@@ -165,9 +158,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: _isLoading
                       ? const CircularProgressIndicator()
                       : Text(
-                          '회원가입',
-                          style: TextStyle(fontSize: textSize),
-                        ),
+                    '회원가입',
+                    style: TextStyle(fontSize: textSize),
+                  ),
                 ),
               ),
             ],
@@ -179,10 +172,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _idController.dispose();
+    _emailController.dispose();
     _pwController.dispose();
     _pw2Controller.dispose();
     _nameController.dispose();
     super.dispose();
   }
-} 
+}

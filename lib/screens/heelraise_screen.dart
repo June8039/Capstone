@@ -6,9 +6,6 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:video_player/video_player.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:capstone_healthcare_app/services/exercise_video_service.dart'; // 실제 경로
-import 'package:capstone_healthcare_app/models/exercise_video.dart';
 
 class HeelRaiseScreen extends StatefulWidget {
   final Map<String, dynamic> baselineValues;
@@ -172,36 +169,43 @@ class _HeelRaiseScreenState extends State<HeelRaiseScreen> {
   }
 
   Future<void> _uploadVideo() async {
-     if (_recordedVideoFile == null) return;
-     setState(() => _isUploading = true);
-     try {
-       // 1) 현재 로그인된 사용자 UID
-       final userId = FirebaseAuth.instance.currentUser!.uid;
-       // 2) 서비스 호출: Storage 업로드 + Firestore 메타데이터 저장
-       final ExerciseVideo video = await ExerciseVideoService()
-           .uploadExerciseVideo(
-             videoFile: _recordedVideoFile!,
-             exerciseType: 'heel_raise',
-             count: _count,
-             userId: userId,
-           );
+    if (_recordedVideoFile == null) return;
 
-         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('운동 영상이 저장되었습니다.')),
-         );
-       } catch (e) {
-         debugPrint('서비스 업로드 오류: $e');
-         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('영상 저장 중 오류가 발생했습니다.')),
-         );
-       } finally {
-         setState(() => _isUploading = false);
-         // 3) 임시 파일 삭제
-         if (_recordedVideoFile != null && await _recordedVideoFile!.exists()) {
-           await _recordedVideoFile!.delete();
-         }
-       }
-     }
+    setState(() => _isUploading = true);
+
+    try {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('videos/heel_raise_$timestamp.mp4');
+      
+      final uploadTask = storageRef.putFile(_recordedVideoFile!);
+      
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        print('업로드 진행률: $progress%');
+      });
+
+      await uploadTask.whenComplete(() => null);
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('운동 영상이 저장되었습니다.')),
+      );
+    } catch (e) {
+      print('업로드 오류: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('영상 저장 중 오류가 발생했습니다.')),
+      );
+    } finally {
+      setState(() => _isUploading = false);
+      try {
+        await _recordedVideoFile!.delete();
+      } catch (e) {
+        print('임시 파일 삭제 오류: $e');
+      }
+    }
+  }
 
   void _subscribeEventChannel() {
     _eventSubscription = _eventChannel.receiveBroadcastStream().listen((event) {

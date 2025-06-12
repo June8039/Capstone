@@ -11,10 +11,8 @@ class HeelRaiseCounter(
     private val baselineRightHeelY: Float,
     private val baselineLeftEyeY: Float,
     private val baselineRightEyeY: Float,
-
     private val raiseRatio: Float = 0.02f,
     private val returnThresholdRatio: Float = 0.12f,
-
     private val eyeRaiseThreshold: Float = 8f
 ) : MotionCounter {
 
@@ -76,7 +74,6 @@ class HeelRaiseCounter(
             State.LIFTED -> {
                 // 2. 발이 완전히 내려오고 쿨다운 시간이 지났을 때만 카운트
                 if (bothReturned) {
-
                     if (currentTime - lastHeelRaisedTime > 300) {  // 최소 0.3초 유지
                         if (currentTime - lastCountTime > cooldownInterval) {
                             count++

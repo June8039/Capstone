@@ -161,7 +161,7 @@ class _PersonalRecordScreenState extends State<PersonalRecordScreen> {
                 onPressed: () {
                   /* Respond to button press: go to a new screen that displays records*/
                 },
-                icon: Icon(Icons.video_collection_rounded, size: 18),
+                icon: Icon(Icons.video_collection_rounded, size: 50),
                 label: Text("운동 영상 보러가기"),
             )
             ],

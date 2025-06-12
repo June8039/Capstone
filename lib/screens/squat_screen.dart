@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:video_player/video_player.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class SquatScreen extends StatefulWidget {
   const SquatScreen({super.key});
@@ -32,6 +35,9 @@ class _SquatScreenState extends State<SquatScreen> {
   late Timer _timer;
   String _elapsedTime = "00:00";
 
+  File? _recordedVideoFile;
+  bool _isUploading = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +58,68 @@ class _SquatScreenState extends State<SquatScreen> {
     // 타이머 시작
     _startTimer();
   }
+  /// 녹화 시작: native 쪽 MediaRecorder에 저장 경로 전달
+  Future<void> _startRecording() async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      _recordedVideoFile = File('${tempDir.path}/squat_$ts.mp4');
+      await _methodChannel.invokeMethod('startRecording', {
+        'outputPath': _recordedVideoFile!.path,
+      });
+    } catch (e) {
+      print('녹화 시작 오류: $e');
+    }
+  }
+
+  /// 녹화 중지: native 쪽 MediaRecorder stop
+  Future<void> _stopRecording() async {
+    try {
+      await _methodChannel.invokeMethod('stopRecording');
+    } catch (e) {
+      print('녹화 중지 오류: $e');
+    }
+  }
+
+  /// 업로드: Firebase Storage에 putFile 후 스낵바 알림
+  Future<void> _uploadVideo() async {
+    if (_recordedVideoFile == null) return;
+    setState(() => _isUploading = true);
+
+    try {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('videos/squat_$ts.mp4');
+      final task = ref.putFile(_recordedVideoFile!);
+
+      task.snapshotEvents.listen((snapshot) {
+        final progress =
+            snapshot.bytesTransferred / snapshot.totalBytes * 100;
+        print('업로드 진행률: ${progress.toStringAsFixed(1)}%');
+      });
+
+      await task.whenComplete(() => null);
+      await ref.getDownloadURL(); // 필요 시 URL 활용
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('운동 영상이 저장되었습니다.')),
+      );
+    } catch (e) {
+      print('업로드 오류: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('영상 저장 중 오류가 발생했습니다.')),
+      );
+    } finally {
+      setState(() => _isUploading = false);
+      try {
+        await _recordedVideoFile?.delete();
+      } catch (e) {
+        print('임시 파일 삭제 오류: $e');
+      }
+    }
+  }
+
 
   void _startTimer() {
     _stopwatch.start();
@@ -111,6 +179,7 @@ class _SquatScreenState extends State<SquatScreen> {
               setState(() => _isCompleted = true);
               _stopTimer();
               _videoController.pause(); // 운동 완료 시 영상 멈춤
+              _stopRecording().then((_) => _uploadVideo());   // 녹화 중지 + 업로드
             }
           }
         }

@@ -44,7 +44,7 @@ class ExerciseScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Exercises")),
+      appBar: AppBar(title: const Text("운동하기")),
       body: SingleChildScrollView(
         child: Center(
           child: Container(
@@ -54,10 +54,7 @@ class ExerciseScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('운동계획',
-                    style:
-                    TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
+
                 // 운동 1 (클릭 시 CalibrationScreen으로 이동)
                 GestureDetector(
                   onTap: () => _startHeelRaiseFlow(context),

@@ -15,6 +15,7 @@ import 'screens/login_screen.dart';
 import 'package:provider/provider.dart';
 import 'providers/mood_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:capstone_healthcare_app/screens/login_screen.dart';
 import 'package:capstone_healthcare_app/screens/heelraise_screen.dart';
 
 void main() async {
@@ -24,9 +25,7 @@ void main() async {
 
   // Firebase Core 초기화
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform.copyWith(
-      storageBucket: 'capstone-11bce.firebasestorage.app',
-    ),
+    options: DefaultFirebaseOptions.currentPlatform,
   );
 
   // Run the app
@@ -80,15 +79,6 @@ class _MainScreenState extends State<MainScreen> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // 인증 상태 변화 추적용 로그
-    FirebaseAuth.instance.authStateChanges().listen((User? user) {
-      print('Auth state changed: $user');
     });
   }
 

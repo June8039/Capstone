@@ -29,14 +29,6 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import androidx.camera.video.VideoCapture
-import androidx.camera.video.Recorder
-import androidx.camera.video.Recording
-import androidx.camera.video.FileOutputOptions
-import androidx.camera.video.VideoRecordEvent
-import androidx.camera.video.Quality
-import androidx.camera.video.QualitySelector
-import java.io.File
 
 class NativeHeelRaiseView(
     private val activity: FlutterActivity,
@@ -46,7 +38,7 @@ class NativeHeelRaiseView(
 ) : PlatformView, ImageAnalysis.Analyzer {
 
     private val methodChannel = MethodChannel(messenger, "com.example.capstone_healthcare_app/heel_raise")
-    private val eventChannel = EventChannel(messenger, "com.example.capstone_healthcare_app/heelraise_events")
+    private val eventChannel = EventChannel(messenger, "com.example.capstone_healthcare_app/heel_raise_events")
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
     private var eventSink: EventChannel.EventSink? = null
@@ -64,8 +56,6 @@ class NativeHeelRaiseView(
 
     private lateinit var heelRaiseCounter: HeelRaiseCounter
     private var currentLensFacing = CameraSelector.LENS_FACING_FRONT
-    private var videoCapture: VideoCapture<Recorder>? = null
-    private var recording: Recording? = null
 
     init {
         // 생성 파라미터에서 초기 렌즈 방향 추출
@@ -137,6 +127,7 @@ class NativeHeelRaiseView(
             override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                 eventSink = events
                 Log.d("NativeHeelRaiseView", "이벤트 채널 연결됨")
+                eventSink?.success(mapOf("type" to "camera_ready"))
             }
 
             override fun onCancel(arguments: Any?) {
@@ -194,17 +185,6 @@ class NativeHeelRaiseView(
                     heelRaiseCounter.reset()
                     result.success(null)
                 }
-                "startRecording" -> {
-                    Log.d("NativeHeelRaiseView", "startRecording 메서드 호출됨")
-                    val outputPath = call.argument<String>("outputPath") ?: return@setMethodCallHandler
-                    Log.d("NativeHeelRaiseView", "outputPath: $outputPath")
-                    Log.d("NativeHeelRaiseView", "videoCapture is null? ${videoCapture == null}")
-                    startVideoRecording(outputPath, result)
-                }
-
-                "stopRecording" -> {
-                    stopVideoRecording(result)
-                }
                 else -> result.notImplemented()
             }
         }
@@ -225,6 +205,7 @@ class NativeHeelRaiseView(
                     "실제 적용된 카메라: ${if (cameraSelector.lensFacing == CameraSelector.LENS_FACING_BACK) "후면" else "전면"}"
                 )
 
+
                 val preview = Preview.Builder()
                     .setTargetRotation(previewView.display.rotation)
                     .build()
@@ -235,37 +216,19 @@ class NativeHeelRaiseView(
                     .build()
                     .also { it.setAnalyzer(cameraExecutor, this) }
 
-                val recorder = Recorder.Builder()
-                    .setQualitySelector(QualitySelector.from(Quality.HD))
-                    .build()
-                videoCapture = VideoCapture.withOutput(recorder)
-
                 cameraProvider.bindToLifecycle(
                     activity as LifecycleOwner,
                     cameraSelector,
                     preview,
-                    imageAnalysis,
-                    videoCapture
+                    imageAnalysis
                 )
-
-                // 1초 지연 후 videoCapture 상태 확인
-                Handler(Looper.getMainLooper()).postDelayed({
-                    if (videoCapture != null) {
-                        Log.d("NativeHeelRaiseView", "videoCapture 정상 초기화 확인")
-                        eventSink?.success(mapOf("type" to "camera_ready"))
-                    } else {
-                        Log.e("NativeHeelRaiseView", "videoCapture 초기화 실패!")
-                        eventSink?.error("VIDEO_CAPTURE_ERROR", "VideoCapture 초기화 실패", null)
-                    }
-                }, 1000) // CameraX 바인딩 완료 대기
-
+                eventSink?.success(mapOf("type" to "camera_ready"))
             } catch (e: Exception) {
                 Log.e("NativeHeelRaiseView", "카메라 시작 실패", e)
                 eventSink?.error("CAMERA_ERROR", e.message, null)
             }
         }, ContextCompat.getMainExecutor(activity))
     }
-
 
 
     fun updateLensFacing(newLensFacing: Int) {
@@ -356,38 +319,6 @@ class NativeHeelRaiseView(
             }
         }, ContextCompat.getMainExecutor(activity))
         updateLensFacing(newLensFacing)
-    }
-
-    private fun startVideoRecording(outputPath: String, result: MethodChannel.Result) {
-        val videoCapture = this.videoCapture ?: run {
-            result.error("NO_VIDEO_CAPTURE", "VideoCapture not initialized", null)
-            return
-        }
-        val outputFile = File(outputPath)
-        val outputOptions = FileOutputOptions.Builder(outputFile).build()
-        recording = videoCapture.output
-            .prepareRecording(activity, outputOptions)
-            .start(ContextCompat.getMainExecutor(activity)) { event ->
-                when (event) {
-                    is VideoRecordEvent.Start -> {
-                        Log.d("NativeHeelRaiseView", "녹화 시작")
-                        result.success(null)
-                    }
-                    is VideoRecordEvent.Finalize -> {
-                        Log.d("NativeHeelRaiseView", "녹화 종료: ${outputFile.absolutePath}")
-                        Log.d("NativeHeelRaiseView", "파일 존재 여부: ${outputFile.exists()}")
-                        eventSink?.success(mapOf("type" to "recording_complete", "filePath" to outputFile.absolutePath))
-                    }
-                }
-            }
-    }
-
-
-
-    private fun stopVideoRecording(result: MethodChannel.Result) {
-        recording?.stop()
-        recording = null
-        result.success(null)
     }
 
 

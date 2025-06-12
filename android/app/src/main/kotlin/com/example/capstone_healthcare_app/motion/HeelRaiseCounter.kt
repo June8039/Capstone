@@ -11,7 +11,7 @@ class HeelRaiseCounter(
     private val baselineRightHeelY: Float,
     private val baselineLeftEyeY: Float,
     private val baselineRightEyeY: Float,
-    private val raiseRatio: Float = 0.01f,
+    private val raiseRatio: Float = 0.02f,
     private val returnThresholdRatio: Float = 0.12f,
     private val eyeRaiseThreshold: Float = 8f
 ) : MotionCounter {

@@ -1,5 +1,4 @@
 // android/app/build.gradle
-
 plugins {
     id "com.android.application"
     // START: FlutterFire Configuration

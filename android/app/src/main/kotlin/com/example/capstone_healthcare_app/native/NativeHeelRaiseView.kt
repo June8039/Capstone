@@ -296,6 +296,17 @@ class NativeHeelRaiseView(
     override fun analyze(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
         if (mediaImage != null) {
+            // 1. 입력 이미지 정보 로그
+            Log.d("NativeHeelRaiseView", "InputImage size: ${mediaImage.width}x${mediaImage.height}")
+            Log.d("NativeHeelRaiseView", "Rotation: ${imageProxy.imageInfo.rotationDegrees}")
+
+            // 2. 프리뷰 뷰(스켈레톤 표시 영역) 크기 로그
+            Log.d("NativeHeelRaiseView", "PreviewView size: ${previewView.width}x${previewView.height}")
+
+            // 3. 렌즈 방향 정보
+            Log.d("NativeHeelRaiseView", "Current lens facing: ${if (currentLensFacing == CameraSelector.LENS_FACING_FRONT) "FRONT" else "BACK"}")
+
+            // 4. 포즈 추정
             val image = InputImage.fromMediaImage(
                 mediaImage,
                 imageProxy.imageInfo.rotationDegrees
@@ -308,6 +319,7 @@ class NativeHeelRaiseView(
             poseDetector.process(image)
                 .addOnSuccessListener { pose ->
                     Log.d("NativeHeelRaiseView", "포즈 감지 성공: ${pose.allPoseLandmarks.size}개 랜드마크")
+                    // 5. 좌표 변환에 사용되는 값 로그
                     posePainter.setPose(
                         pose,
                         mediaImage.width,

@@ -7,15 +7,10 @@ class CoordinateMapper(
     private val screenHeight: Float,
     private val rotationDegrees: Int = 0
 ) {
-    private val scale: Float = maxOf(screenWidth / cameraWidth, screenHeight / cameraHeight)
+    private val scale: Float = minOf(screenWidth / cameraWidth, screenHeight / cameraHeight)
     private val xOffset: Float = (screenWidth - (cameraWidth * scale)) / 2
     private val yOffset: Float = (screenHeight - (cameraHeight * scale)) / 2
 
-    fun transposeX(x: Float): Float {
-        return xOffset + x * scale
-    }
-
-    fun transposeY(y: Float): Float {
-        return yOffset + y * scale
-    }
+    fun transposeX(x: Float): Float = xOffset + x * scale
+    fun transposeY(y: Float): Float = yOffset + y * scale
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/mood_provider.dart';
+import 'video_list_screen.dart';
 
 class PersonalRecordScreen extends StatefulWidget {
   const PersonalRecordScreen({super.key});
@@ -158,8 +159,12 @@ class _PersonalRecordScreenState extends State<PersonalRecordScreen> {
               ),
               const SizedBox(height: 50),
               ElevatedButton.icon(
-                onPressed: () {
-                  /* Respond to button press: go to a new screen that displays records*/
+                onPressed: ()  {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const VideoListScreen(),
+                    ),
+                  );
                 },
                 icon: Icon(Icons.video_collection_rounded, size: 50),
                 label: Text("운동 영상 보러가기"),

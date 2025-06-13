@@ -22,7 +22,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAutoLogin();
+    // 첫 프레임 렌더링 뒤에 자동 로그인 체크
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAutoLogin();
+    });
   }
 
   Future<void> _checkAutoLogin() async {
@@ -54,9 +57,11 @@ class _LoginScreenState extends State<LoginScreen> {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _pwController.text,
-      );
-      if (!mounted) return;
-      _navigateToMain();
+      );     if (!mounted) return;
+      // 로그인 성공 후 한 프레임 뒤에 화면 전환
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _navigateToMain();
+      });
     } on FirebaseAuthException catch (e) {
       String message = '로그인 실패';
       if (e.code == 'user-not-found') {
